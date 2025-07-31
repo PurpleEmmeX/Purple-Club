@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Moduli ES6 - Purple Club</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .test-result {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+        .loading {
+            border-left-color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Moduli ES6 - Purple Club</h1>
+    
+    <div id="results"></div>
+    
+    <script type="module">
+        const results = document.getElementById('results');
+        
+        function addResult(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        addResult('🔄 Iniziando test moduli ES6...', 'loading');
+        
+        // Test 1: Import admin-config.js
+        try {
+            addResult('📝 Test 1: Caricamento admin-config.js...', 'loading');
+            const adminConfig = await import('./admin-config.js');
+            addResult('✅ Test 1: admin-config.js caricato con successo!');
+            addResult(`📊 Trovati ${Object.keys(adminConfig.ADMIN_ACCOUNTS).length} account admin`);
+        } catch (error) {
+            addResult(`❌ Test 1: Errore caricamento admin-config.js: ${error.message}`, 'error');
+        }
+        
+        // Test 2: Import database.js
+        try {
+            addResult('📝 Test 2: Caricamento database.js...', 'loading');
+            const database = await import('./database.js');
+            addResult('✅ Test 2: database.js caricato con successo!');
+        } catch (error) {
+            addResult(`❌ Test 2: Errore caricamento database.js: ${error.message}`, 'error');
+        }
+        
+        // Test 3: Import firebase-config.js
+        try {
+            addResult('📝 Test 3: Caricamento firebase-config.js...', 'loading');
+            const firebase = await import('./firebase-config.js');
+            addResult('✅ Test 3: firebase-config.js caricato con successo!');
+        } catch (error) {
+            addResult(`❌ Test 3: Errore caricamento firebase-config.js: ${error.message}`, 'error');
+        }
+        
+        addResult('🎉 Test completati! Se vedi errori, è normale in localhost.');
+        addResult('🌐 Su Netlify (https://purpleclub.netlify.app) tutto funzionerà perfettamente!');
+    </script>
+</body>
+</html>

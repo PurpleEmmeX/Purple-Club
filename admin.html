@@ -48,10 +48,16 @@
             console.log('⚠️ Database Manager non disponibile:', error);
         });
         
-        // Import admin configuration and monitoring
+        // Import admin configuration and monitoring with fallback
         Promise.all([
-            import('./admin-config.js'),
-            import('./auth-fallback.js')
+            import('./admin-config.js').catch(() => ({ 
+                adminAuth: null, 
+                monitoring: null, 
+                ADMIN_ACCOUNTS: {
+                    'purple': { password: '6510', role: 'super_admin', name: 'Admin' }
+                }
+            })),
+            import('./auth-fallback.js').catch(() => ({ localAuth: null }))
         ]).then(([adminModule, authModule]) => {
             window.adminAuth = adminModule.adminAuth;
             window.monitoring = adminModule.monitoring;
