@@ -377,6 +377,7 @@
                         <div class="notifications-actions">
                             <button id="save-notifications" class="admin-btn admin-btn-primary">Salva Configurazione</button>
                             <button id="test-notifications" class="admin-btn admin-btn-secondary">Test Notifiche</button>
+                            <button id="clear-test-events" class="admin-btn admin-btn-danger">🗑️ Elimina Eventi Test</button>
                         </div>
                     </div>
                     
@@ -965,6 +966,57 @@
                 alert('Cache pulita con successo!');
             }
         }
+        
+        // Funzione per eliminare eventi di test
+        async function clearTestEvents() {
+            if (!confirm('Sei sicuro di voler eliminare TUTTI gli eventi di test? Questa operazione non può essere annullata.')) {
+                return;
+            }
+            
+            try {
+                if (!window.dbManager) {
+                    alert('Database manager non disponibile!');
+                    return;
+                }
+                
+                // Carica tutti gli eventi
+                const events = await window.dbManager.loadEvents();
+                let deletedCount = 0;
+                
+                // Elimina eventi che contengono "test" nel titolo o nell'artista
+                for (const event of events) {
+                    const isTestEvent = (
+                        (event.title && event.title.toLowerCase().includes('test')) ||
+                        (event.artist && event.artist.toLowerCase().includes('test')) ||
+                        (event.title && event.title.includes('175397')) ||
+                        (event.title && event.title.includes('SECURITY'))
+                    );
+                    
+                    if (isTestEvent) {
+                        await window.dbManager.deleteEvent(event.id);
+                        deletedCount++;
+                        console.log(`🗑️ Eliminato evento test: ${event.title}`);
+                    }
+                }
+                
+                if (deletedCount > 0) {
+                    alert(`✅ Eliminati ${deletedCount} eventi di test!`);
+                    // Ricarica la lista eventi
+                    if (window.adminManager) {
+                        window.adminManager.renderEventsList();
+                    }
+                } else {
+                    alert('ℹ️ Nessun evento di test trovato.');
+                }
+                
+            } catch (error) {
+                console.error('Errore eliminazione eventi test:', error);
+                alert('❌ Errore durante l\'eliminazione degli eventi di test.');
+            }
+        }
+        
+        // Aggiungi listener per il pulsante
+        document.getElementById('clear-test-events')?.addEventListener('click', clearTestEvents);
         
         // Avvia aggiornamenti periodici
         setInterval(() => {

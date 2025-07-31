@@ -69,7 +69,7 @@ service cloud.firestore {
     
     <button onclick="testFirebaseConnection()">Test Connessione Firebase</button>
     <button onclick="loadEvents()">Carica Eventi</button>
-    
+    <button onclick="createTestEvent()">Crea Evento Test</button>
     <button onclick="testSecurityRules()">🔒 Test Regole Sicurezza</button>
     <button onclick="clearResults()">Pulisci Risultati</button>
     
@@ -148,6 +148,36 @@ service cloud.firestore {
                 addResult(`✅ Caricati ${snapshot.size} eventi`, 'success');
             } catch (error) {
                 addResult('❌ Errore caricamento eventi: ' + error.message, 'error');
+                console.error('Errore dettagliato:', error);
+            }
+        }
+        
+        window.createTestEvent = async function() {
+            try {
+                addResult('🔄 Creazione evento test...', 'info');
+                const testEvent = {
+                    title: 'Test Event ' + Date.now(),
+                    artist: 'Test Artist',
+                    day: new Date().getDate(),
+                    month: new Date().toLocaleDateString('it-IT', { month: 'short' }),
+                    year: new Date().getFullYear(),
+                    venue: 'Test Venue',
+                    genre: 'Test',
+                    time: '21:00',
+                    price: '10€',
+                    featured: false,
+                    soldOut: false,
+                    createdAt: new Date().toISOString()
+                };
+                
+                const eventsRef = collection(db, 'events');
+                const docRef = await addDoc(eventsRef, testEvent);
+                addResult(`✅ Evento test creato con ID: ${docRef.id}`, 'success');
+                
+                // Ricarica automaticamente gli eventi
+                setTimeout(loadEvents, 1000);
+            } catch (error) {
+                addResult('❌ Errore creazione evento: ' + error.message, 'error');
                 console.error('Errore dettagliato:', error);
             }
         }
