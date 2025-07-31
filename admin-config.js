@@ -2,32 +2,16 @@
 
 // Account amministratori autorizzati
 export const ADMIN_ACCOUNTS = {
-    'michele@purpleclub.it': {
-        password: 'PurpleAdmin2024!',
-        role: 'super_admin',
-        name: 'Michele Traficante',
-        permissions: ['all'],
-        lastLogin: null,
-        createdAt: new Date('2024-01-01')
-    },
-    'sara@purpleclub.it': {
-        password: 'SecondAdmin2024!',
-        role: 'admin',
-        name: 'Sara Rossi',
-        permissions: ['events', 'moderation', 'users'],
-        lastLogin: null,
-        createdAt: new Date('2024-01-01')
-    },
-    // Compatibilità con credenziali esistenti
-    'purple': {
-        password: '6510',
-        role: 'super_admin',
-        name: 'Amministratore Legacy',
-        permissions: ['all'],
-        lastLogin: null,
-        createdAt: new Date('2024-01-01')
-    }
-};
+    // Unico amministratore autorizzato
+     'purple': {
+         password: '6510',
+         role: 'super_admin',
+         name: 'Purple Club Admin',
+         permissions: ['all'],
+         lastLogin: null,
+         createdAt: new Date('2024-01-01')
+     }
+ };
 
 // Configurazione sistema di monitoraggio
 export const MONITORING_CONFIG = {

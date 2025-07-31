@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controllo Rapido Sincronizzazione</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .result {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #8b5cf6;
+        }
+        .error { border-left-color: #ef4444; }
+        .success { border-left-color: #10b981; }
+        .warning { border-left-color: #f59e0b; }
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        pre {
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Controllo Rapido Sincronizzazione</h1>
+    
+    <button onclick="checkSync()">🚀 Verifica Sincronizzazione</button>
+    <button onclick="showDetails()">📋 Mostra Dettagli</button>
+    <button onclick="clearResults()">🗑️ Pulisci</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        let results = [];
+        
+        function addResult(message, type = 'result') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+            results.push({message, type, timestamp: new Date()});
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            results = [];
+        }
+        
+        async function checkLocalStorage() {
+            try {
+                const stored = localStorage.getItem('purpleClubEvents');
+                const events = stored ? JSON.parse(stored) : [];
+                
+                addResult(`📱 <strong>LocalStorage:</strong> ${events.length} eventi trovati`, 
+                    events.length > 0 ? 'success' : 'warning');
+                
+                if (events.length > 0) {
+                    addResult(`📋 <strong>Primi 3 eventi localStorage:</strong><br>${events.slice(0, 3).map(e => 
+                        `• ${e.title || 'Senza titolo'} - ${e.date || 'Senza data'}`
+                    ).join('<br>')}`);
+                }
+                
+                return events;
+            } catch (error) {
+                addResult(`❌ <strong>Errore localStorage:</strong> ${error.message}`, 'error');
+                return [];
+            }
+        }
+        
+        async function checkFirebase() {
+            try {
+                addResult('🔄 Connessione a Firebase...', 'warning');
+                
+                // Import Firebase
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+                const { getFirestore, collection, getDocs, query, orderBy } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                const { getAuth, signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+                
+                // Firebase config
+                const firebaseConfig = {
+                    apiKey: "AIzaSyDONUlWkpq-0ZMPPmigQ6gczz2ghfem1hU",
+                    authDomain: "purple-club-d6080.firebaseapp.com",
+                    projectId: "purple-club-d6080",
+                    storageBucket: "purple-club-d6080.firebasestorage.app",
+                    messagingSenderId: "113484849723",
+                    appId: "1:113484849723:web:cde485c5028fa829f9321e"
+                };
+                
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                const auth = getAuth(app);
+                
+                // Autenticazione anonima
+                await signInAnonymously(auth);
+                addResult('✅ <strong>Firebase:</strong> Connesso e autenticato', 'success');
+                
+                // Carica eventi
+                const eventsRef = collection(db, 'events');
+                const q = query(eventsRef, orderBy('date', 'asc'));
+                const querySnapshot = await getDocs(q);
+                
+                const events = [];
+                querySnapshot.forEach((doc) => {
+                    events.push({ id: doc.id, ...doc.data() });
+                });
+                
+                addResult(`☁️ <strong>Firebase:</strong> ${events.length} eventi trovati`, 
+                    events.length > 0 ? 'success' : 'warning');
+                
+                if (events.length > 0) {
+                    addResult(`📋 <strong>Primi 3 eventi Firebase:</strong><br>${events.slice(0, 3).map(e => 
+                        `• ${e.title || 'Senza titolo'} - ${e.date || 'Senza data'} (${e.status || 'N/A'})`
+                    ).join('<br>')}`);
+                }
+                
+                return events;
+            } catch (error) {
+                addResult(`❌ <strong>Errore Firebase:</strong> ${error.message}`, 'error');
+                return [];
+            }
+        }
+        
+        async function checkSync() {
+            clearResults();
+            addResult('🚀 <strong>Inizio controllo sincronizzazione...</strong>');
+            
+            const localEvents = await checkLocalStorage();
+            const firebaseEvents = await checkFirebase();
+            
+            // Analisi sincronizzazione
+            addResult('🔄 <strong>Analisi sincronizzazione...</strong>');
+            
+            if (localEvents.length === 0 && firebaseEvents.length === 0) {
+                addResult('⚠️ <strong>Nessun evento trovato</strong> né in localStorage né su Firebase', 'warning');
+                return;
+            }
+            
+            if (localEvents.length > 0 && firebaseEvents.length === 0) {
+                addResult(`❌ <strong>Problema di sincronizzazione:</strong> ${localEvents.length} eventi in localStorage ma 0 su Firebase`, 'error');
+                addResult('💡 <strong>Soluzione:</strong> Usa la pagina sync-events.html per sincronizzare', 'warning');
+                return;
+            }
+            
+            if (localEvents.length === 0 && firebaseEvents.length > 0) {
+                addResult(`ℹ️ <strong>Solo Firebase:</strong> ${firebaseEvents.length} eventi solo su Firebase (normale se già sincronizzato)`, 'success');
+                return;
+            }
+            
+            // Confronta eventi
+            const missingInFirebase = localEvents.filter(localEvent => {
+                return !firebaseEvents.some(firebaseEvent => 
+                    firebaseEvent.title === localEvent.title && 
+                    firebaseEvent.date === localEvent.date
+                );
+            });
+            
+            if (missingInFirebase.length > 0) {
+                addResult(`⚠️ <strong>Eventi da sincronizzare:</strong> ${missingInFirebase.length} eventi in localStorage non sono su Firebase`, 'warning');
+                addResult(`📋 <strong>Eventi mancanti:</strong><br>${missingInFirebase.map(e => 
+                    `• ${e.title || 'Senza titolo'} - ${e.date || 'Senza data'}`
+                ).join('<br>')}`);
+            } else {
+                addResult('✅ <strong>Sincronizzazione OK:</strong> Tutti gli eventi sono sincronizzati', 'success');
+            }
+        }
+        
+        function showDetails() {
+            if (results.length === 0) {
+                addResult('ℹ️ Esegui prima un controllo per vedere i dettagli');
+                return;
+            }
+            
+            const details = `
+                <h3>📊 Dettagli Sessione</h3>
+                <pre>${JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    url: window.location.href,
+                    localStorage: {
+                        available: typeof(Storage) !== 'undefined',
+                        purpleClubEvents: localStorage.getItem('purpleClubEvents') ? 'presente' : 'assente'
+                    },
+                    results: results.length
+                }, null, 2)}</pre>
+            `;
+            
+            addResult(details);
+        }
+        
+        // Avvio automatico
+        window.addEventListener('DOMContentLoaded', () => {
+            addResult('🔍 <strong>Controllo Rapido Sincronizzazione avviato</strong>');
+            addResult('💡 Clicca "Verifica Sincronizzazione" per iniziare l\'analisi');
+        });
+    </script>
+</body>
+</html>

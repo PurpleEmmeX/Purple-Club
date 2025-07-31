@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Sincronizzazione - Purple Club</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #222;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #1a4a1a; color: #00ff00; }
+        .error { background: #4a1a1a; color: #ff4444; }
+        .warning { background: #4a4a1a; color: #ffaa00; }
+        .info { background: #1a1a4a; color: #4488ff; }
+        button {
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #555;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #444;
+        }
+        pre {
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .event-item {
+            background: #2a2a2a;
+            margin: 5px 0;
+            padding: 10px;
+            border-left: 3px solid #00ff00;
+        }
+        .event-missing {
+            border-left-color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Sincronizzazione Purple Club</h1>
+        <p>Analisi dettagliata dello stato di sincronizzazione tra localStorage e Firebase</p>
+        
+        <div class="section">
+            <h2>📊 Controlli Automatici</h2>
+            <button onclick="runFullDiagnostic()">🚀 Esegui Diagnosi Completa</button>
+            <button onclick="compareData()">🔄 Confronta Dati</button>
+            <button onclick="forceSyncMissing()">⚡ Sincronizza Mancanti</button>
+            <button onclick="clearLogs()">🗑️ Pulisci Log</button>
+        </div>
+        
+        <div class="section">
+            <h2>📱 LocalStorage Status</h2>
+            <div id="localStorage-status">⏳ Controllo in corso...</div>
+            <div id="localStorage-events"></div>
+        </div>
+        
+        <div class="section">
+            <h2>☁️ Firebase Status</h2>
+            <div id="firebase-status">⏳ Controllo in corso...</div>
+            <div id="firebase-events"></div>
+        </div>
+        
+        <div class="section">
+            <h2>🔄 Analisi Sincronizzazione</h2>
+            <div id="sync-analysis">⏳ Analisi in corso...</div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Log Debug</h2>
+            <pre id="debug-logs"></pre>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            getDocs, 
+            addDoc,
+            query,
+            orderBy,
+            where
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { 
+            getAuth, 
+            signInAnonymously 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDONUlWkpq-0ZMPPmigQ6gczz2ghfem1hU",
+            authDomain: "purple-club-d6080.firebaseapp.com",
+            projectId: "purple-club-d6080",
+            storageBucket: "purple-club-d6080.firebasestorage.app",
+            messagingSenderId: "113484849723",
+            appId: "1:113484849723:web:cde485c5028fa829f9321e"
+        };
+        
+        let app, db, auth;
+        let localEvents = [];
+        let firebaseEvents = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('debug-logs');
+            const typeIcon = {
+                'info': 'ℹ️',
+                'success': '✅',
+                'error': '❌',
+                'warning': '⚠️'
+            };
+            logElement.textContent += `[${timestamp}] ${typeIcon[type]} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+        
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Autenticazione anonima
+                await signInAnonymously(auth);
+                
+                log('Firebase inizializzato e autenticato', 'success');
+                return true;
+            } catch (error) {
+                log(`Errore inizializzazione Firebase: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function loadLocalStorageEvents() {
+            try {
+                const stored = localStorage.getItem('purpleClubEvents');
+                localEvents = stored ? JSON.parse(stored) : [];
+                
+                updateStatus('localStorage-status', 
+                    `✅ ${localEvents.length} eventi trovati nel localStorage`, 'success');
+                
+                const container = document.getElementById('localStorage-events');
+                if (localEvents.length === 0) {
+                    container.innerHTML = '<p>Nessun evento nel localStorage</p>';
+                } else {
+                    container.innerHTML = localEvents.map((event, index) => 
+                        `<div class="event-item">
+                            <strong>${index + 1}. ${event.title || 'Senza titolo'}</strong><br>
+                            Artista: ${event.artist || 'N/A'}<br>
+                            Data: ${event.date || 'N/A'}<br>
+                            ID: ${event.id || 'N/A'}
+                        </div>`
+                    ).join('');
+                }
+                
+                log(`Caricati ${localEvents.length} eventi dal localStorage`, 'info');
+                return localEvents;
+            } catch (error) {
+                updateStatus('localStorage-status', 
+                    `❌ Errore lettura localStorage: ${error.message}`, 'error');
+                log(`Errore localStorage: ${error.message}`, 'error');
+                return [];
+            }
+        }
+        
+        async function loadFirebaseEvents() {
+            try {
+                const eventsRef = collection(db, 'events');
+                const q = query(eventsRef, orderBy('date', 'asc'));
+                const querySnapshot = await getDocs(q);
+                
+                firebaseEvents = [];
+                querySnapshot.forEach((doc) => {
+                    firebaseEvents.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateStatus('firebase-status', 
+                    `✅ ${firebaseEvents.length} eventi trovati su Firebase`, 'success');
+                
+                const container = document.getElementById('firebase-events');
+                if (firebaseEvents.length === 0) {
+                    container.innerHTML = '<p>Nessun evento su Firebase</p>';
+                } else {
+                    container.innerHTML = firebaseEvents.map((event, index) => 
+                        `<div class="event-item">
+                            <strong>${index + 1}. ${event.title || 'Senza titolo'}</strong><br>
+                            Artista: ${event.artist || 'N/A'}<br>
+                            Data: ${event.date || 'N/A'}<br>
+                            ID Firebase: ${event.id}<br>
+                            Status: ${event.status || 'N/A'}
+                        </div>`
+                    ).join('');
+                }
+                
+                log(`Caricati ${firebaseEvents.length} eventi da Firebase`, 'info');
+                return firebaseEvents;
+            } catch (error) {
+                updateStatus('firebase-status', 
+                    `❌ Errore lettura Firebase: ${error.message}`, 'error');
+                log(`Errore Firebase: ${error.message}`, 'error');
+                return [];
+            }
+        }
+        
+        function analyzeSync() {
+            const analysis = document.getElementById('sync-analysis');
+            
+            // Trova eventi nel localStorage che non sono su Firebase
+            const missingInFirebase = localEvents.filter(localEvent => {
+                return !firebaseEvents.some(firebaseEvent => 
+                    firebaseEvent.title === localEvent.title && 
+                    firebaseEvent.date === localEvent.date
+                );
+            });
+            
+            // Trova eventi su Firebase che non sono nel localStorage
+            const missingInLocal = firebaseEvents.filter(firebaseEvent => {
+                return !localEvents.some(localEvent => 
+                    localEvent.title === firebaseEvent.title && 
+                    localEvent.date === firebaseEvent.date
+                );
+            });
+            
+            let analysisHtml = `
+                <div class="status info">
+                    📊 <strong>Analisi Sincronizzazione:</strong><br>
+                    • LocalStorage: ${localEvents.length} eventi<br>
+                    • Firebase: ${firebaseEvents.length} eventi<br>
+                    • Mancanti su Firebase: ${missingInFirebase.length}<br>
+                    • Mancanti su LocalStorage: ${missingInLocal.length}
+                </div>
+            `;
+            
+            if (missingInFirebase.length > 0) {
+                analysisHtml += `
+                    <div class="status warning">
+                        ⚠️ <strong>Eventi da sincronizzare su Firebase:</strong>
+                        ${missingInFirebase.map(event => 
+                            `<div class="event-item event-missing">
+                                ${event.title || 'Senza titolo'} - ${event.date || 'Senza data'}
+                            </div>`
+                        ).join('')}
+                    </div>
+                `;
+                log(`Trovati ${missingInFirebase.length} eventi da sincronizzare su Firebase`, 'warning');
+            }
+            
+            if (missingInLocal.length > 0) {
+                analysisHtml += `
+                    <div class="status info">
+                        ℹ️ <strong>Eventi solo su Firebase:</strong>
+                        ${missingInLocal.map(event => 
+                            `<div class="event-item">
+                                ${event.title || 'Senza titolo'} - ${event.date || 'Senza data'}
+                            </div>`
+                        ).join('')}
+                    </div>
+                `;
+                log(`Trovati ${missingInLocal.length} eventi solo su Firebase`, 'info');
+            }
+            
+            if (missingInFirebase.length === 0 && missingInLocal.length === 0) {
+                analysisHtml += `
+                    <div class="status success">
+                        ✅ <strong>Sincronizzazione completa!</strong><br>
+                        Tutti gli eventi sono sincronizzati correttamente.
+                    </div>
+                `;
+                log('Sincronizzazione completa - tutti gli eventi sono allineati', 'success');
+            }
+            
+            analysis.innerHTML = analysisHtml;
+            
+            // Salva gli eventi mancanti per la sincronizzazione
+            window.missingInFirebase = missingInFirebase;
+        }
+        
+        async function syncMissingEvents() {
+            if (!window.missingInFirebase || window.missingInFirebase.length === 0) {
+                log('Nessun evento da sincronizzare', 'info');
+                return;
+            }
+            
+            log(`Inizio sincronizzazione di ${window.missingInFirebase.length} eventi...`, 'info');
+            
+            let syncedCount = 0;
+            for (const event of window.missingInFirebase) {
+                try {
+                    // Rimuovi l'ID locale prima di salvare
+                    const { id, ...eventData } = event;
+                    
+                    // Aggiungi metadati di sincronizzazione
+                    eventData.syncedAt = new Date().toISOString();
+                    eventData.syncedFrom = 'localStorage';
+                    
+                    const docRef = await addDoc(collection(db, 'events'), eventData);
+                    syncedCount++;
+                    log(`✅ Sincronizzato: ${event.title} (ID: ${docRef.id})`, 'success');
+                } catch (error) {
+                    log(`❌ Errore sincronizzazione ${event.title}: ${error.message}`, 'error');
+                }
+            }
+            
+            log(`Sincronizzazione completata: ${syncedCount}/${window.missingInFirebase.length} eventi`, 'success');
+            
+            // Ricarica i dati per aggiornare l'analisi
+            await loadFirebaseEvents();
+            analyzeSync();
+        }
+        
+        // Funzioni globali
+        window.runFullDiagnostic = async function() {
+            log('🚀 Inizio diagnosi completa...', 'info');
+            
+            const firebaseOk = await initializeFirebase();
+            if (!firebaseOk) {
+                log('❌ Impossibile continuare senza Firebase', 'error');
+                return;
+            }
+            
+            loadLocalStorageEvents();
+            await loadFirebaseEvents();
+            analyzeSync();
+            
+            log('✅ Diagnosi completa terminata', 'success');
+        };
+        
+        window.compareData = function() {
+            log('🔄 Confronto dati...', 'info');
+            analyzeSync();
+        };
+        
+        window.forceSyncMissing = async function() {
+            log('⚡ Avvio sincronizzazione forzata...', 'info');
+            await syncMissingEvents();
+        };
+        
+        window.clearLogs = function() {
+            document.getElementById('debug-logs').textContent = '';
+        };
+        
+        // Avvio automatico
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🔍 Debug Sincronizzazione avviato', 'info');
+            window.runFullDiagnostic();
+        });
+    </script>
+</body>
+</html>
