@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purple Club - Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
+    
+    <!-- Firebase SDK v9 (modular) -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDONUlWkpq-0ZMPPmigQ6gczz2ghfem1hU",
+            authDomain: "purple-club-d6080.firebaseapp.com",
+            projectId: "purple-club-d6080",
+            storageBucket: "purple-club-d6080.firebasestorage.app",
+            messagingSenderId: "113484849723",
+            appId: "1:113484849723:web:cde485c5028fa829f9321e",
+            measurementId: "G-KZZWSFMZXB"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Make Firebase available globally
+        window.firebaseApp = app;
+        window.firebaseDb = db;
+        window.firebaseAuth = auth;
+        
+        console.log('🔥 Firebase inizializzato in admin.html');
+        
+        // Import and initialize database manager
+        import('./database.js').then(module => {
+            window.dbManager = module.dbManager;
+            console.log('📊 Database Manager caricato in admin.html');
+        }).catch(error => {
+            console.log('⚠️ Database Manager non disponibile:', error);
+        });
+        
+        // Import admin configuration and monitoring
+        Promise.all([
+            import('./admin-config.js'),
+            import('./auth-fallback.js')
+        ]).then(([adminModule, authModule]) => {
+            window.adminAuth = adminModule.adminAuth;
+            window.monitoring = adminModule.monitoring;
+            window.ADMIN_ACCOUNTS = adminModule.ADMIN_ACCOUNTS;
+            window.localAuth = authModule.localAuth;
+            
+            console.log('🔐 Sistema amministrazione caricato');
+            
+            // Verifica autenticazione
+            if (!window.adminAuth.isAuthenticated()) {
+                console.log('❌ Accesso non autorizzato, reindirizzamento...');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Avvia monitoraggio con gestione errori
+            try {
+                window.monitoring.start();
+                console.log('📊 Monitoraggio in tempo reale avviato');
+            } catch (error) {
+                console.warn('⚠️ Errore avvio monitoraggio:', error);
+            }
+            
+            // Inizializza interfaccia admin
+            try {
+                initializeAdminInterface();
+                console.log('✅ Interfaccia admin inizializzata');
+            } catch (error) {
+                console.error('❌ Errore inizializzazione interfaccia:', error);
+            }
+            
+        }).catch(error => {
+            console.error('❌ Errore caricamento sistema admin:', error);
+            // Prova a reindirizzare al login anche in caso di errore
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1000);
+        });
+    </script>
+</head>
+<body>
+    <!-- Cyberpunk Grid Background -->
+    <div class="cyber-grid"></div>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-text">Purple</span>
+                <span class="logo-accent">Club</span>
+                <span class="admin-badge">ADMIN</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Torna al Sito</a></li>
+                <li><a href="#" class="nav-link active">Gestione Eventi</a></li>
+                <li><a href="#" id="logout-btn" class="nav-link">Logout</a></li>
+            </ul>
+            <div class="nav-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Breadcrumbs -->
+    <nav class="breadcrumbs">
+        <div class="container">
+            <ul class="breadcrumb-list">
+                <li class="breadcrumb-item">
+                    <a href="index.html" class="breadcrumb-link">Home</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-separator">></span>
+                </li>
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-current">Admin Panel</span>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Admin Panel -->
+    <section class="admin-panel">
+        <div class="container">
+            <div class="section-header">
+                <div id="welcome-message" class="welcome-message" style="display: none;">
+                    <div class="welcome-content">
+                        <h3>Benvenuto, Amministratore!</h3>
+                        <p>Accesso effettuato con successo al pannello di controllo</p>
+                    </div>
+                    <button id="close-welcome" class="close-welcome">×</button>
+                </div>
+                <h2 class="section-title">Pannello Amministratore</h2>
+                <p class="section-subtitle">
+                    Gestisci gli eventi del Purple Club
+                </p>
+            </div>
+            
+            <div class="admin-grid">
+                <div class="admin-sidebar">
+                    <div class="sidebar-section">
+                        <h3>Gestione Eventi</h3>
+                        <button id="add-event-btn" class="admin-btn admin-btn-primary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Nuovo Evento</span>
+                        </button>
+                        <div class="events-list">
+                            <h4>Eventi Esistenti</h4>
+                            <ul id="admin-events-list">
+                                <!-- Gli eventi verranno caricati dinamicamente qui -->
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <h3>Sistema</h3>
+                        <button id="settings-btn" class="admin-btn admin-btn-secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+                                <path d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.2579 9.77251 19.9887C9.5799 19.7194 9.31074 19.5143 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.3766 5.705 20.3766C5.44217 20.3766 5.18192 20.3248 4.93912 20.2241C4.69632 20.1235 4.47575 19.976 4.29 19.79C4.10405 19.6043 3.95653 19.3837 3.85588 19.1409C3.75523 18.8981 3.70343 18.6378 3.70343 18.375C3.70343 18.1122 3.75523 17.8519 3.85588 17.6091C3.95653 17.3663 4.10405 17.1457 4.29 16.96L4.35 16.9C4.58054 16.6643 4.73519 16.365 4.794 16.0406C4.85282 15.7162 4.81312 15.3816 4.68 15.08C4.55324 14.7842 4.34276 14.532 4.07447 14.3543C3.80618 14.1766 3.49179 14.0813 3.17 14.08H3C2.46957 14.08 1.96086 13.8693 1.58579 13.4942C1.21071 13.1191 1 12.6104 1 12.08C1 11.5496 1.21071 11.0409 1.58579 10.6658C1.96086 10.2907 2.46957 10.08 3 10.08H3.09C3.42099 10.0723 3.742 9.96512 4.01127 9.77251C4.28054 9.5799 4.48571 9.31074 4.6 9C4.73312 8.69838 4.77282 8.36381 4.714 8.03941C4.65519 7.71502 4.50054 7.41568 4.27 7.18L4.21 7.12C4.02405 6.93425 3.87653 6.71368 3.77588 6.47088C3.67523 6.22808 3.62343 5.96783 3.62343 5.705C3.62343 5.44217 3.67523 5.18192 3.77588 4.93912C3.87653 4.69632 4.02405 4.47575 4.21 4.29C4.39575 4.10405 4.61632 3.95653 4.85912 3.85588C5.10192 3.75523 5.36217 3.70343 5.625 3.70343C5.88783 3.70343 6.14808 3.75523 6.39088 3.85588C6.63368 3.95653 6.85425 4.10405 7.04 4.29L7.1 4.35C7.33568 4.58054 7.63502 4.73519 7.95941 4.794C8.28381 4.85282 8.61838 4.81312 8.92 4.68H9C9.29577 4.55324 9.54802 4.34276 9.72569 4.07447C9.90337 3.80618 9.99872 3.49179 10 3.17V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <span>Impostazioni</span>
+                        </button>
+                        <button id="notifications-btn" class="admin-btn admin-btn-secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Notifiche</span>
+                        </button>
+                        <button id="server-btn" class="admin-btn admin-btn-secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M2 3H22V7H2V3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M2 9H22V13H2V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M2 15H22V19H2V15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6 5H6.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6 11H6.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6 17H6.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Server</span>
+                        </button>
+                        <button id="profiles-btn" class="admin-btn admin-btn-secondary" onclick="window.location.href='admin-profiles.html'">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <span>Gestione Profili</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="admin-content">
+                    <!-- Sezione Impostazioni -->
+                    <div id="settings-container" class="settings-container" style="display: none;">
+                        <h3>Impostazioni Avanzate</h3>
+                        
+                        <div class="settings-grid">
+                            <div class="settings-card">
+                                <h4>🔄 Backup Automatico</h4>
+                                <p>Configura il backup automatico dei dati</p>
+                                <div class="setting-item">
+                                    <label>Frequenza Backup:</label>
+                                    <select id="backup-frequency">
+                                        <option value="daily">Giornaliero</option>
+                                        <option value="weekly">Settimanale</option>
+                                        <option value="monthly">Mensile</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <label>Ultimo Backup:</label>
+                                    <span id="last-backup">Mai eseguito</span>
+                                </div>
+                                <button id="manual-backup" class="admin-btn admin-btn-primary">Backup Manuale</button>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <h4>👥 Gestione Permessi</h4>
+                                <p>Configura i permessi degli amministratori</p>
+                                <div class="setting-item">
+                                    <label>Livello Accesso:</label>
+                                    <select id="admin-level">
+                                        <option value="super">Super Admin</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="editor">Editor</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <label>Sessione Scade:</label>
+                                    <select id="session-timeout">
+                                        <option value="1">1 ora</option>
+                                        <option value="8">8 ore</option>
+                                        <option value="24">24 ore</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <h4>📧 Email Automatiche</h4>
+                                <p>Configura le notifiche email</p>
+                                <div class="setting-item">
+                                    <label>Server SMTP:</label>
+                                    <input type="text" id="smtp-server" placeholder="smtp.gmail.com">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Email Admin:</label>
+                                    <input type="email" id="admin-email" placeholder="admin@purpleclub.com">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Notifiche Attive:</label>
+                                    <input type="checkbox" id="email-notifications" checked>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-card">
+                                <h4>💳 Sistema Pagamenti</h4>
+                                <p>Integrazione con sistemi di pagamento</p>
+                                <div class="setting-item">
+                                    <label>Provider:</label>
+                                    <select id="payment-provider">
+                                        <option value="stripe">Stripe</option>
+                                        <option value="paypal">PayPal</option>
+                                        <option value="square">Square</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <label>API Key:</label>
+                                    <input type="password" id="payment-api-key" placeholder="sk_test_...">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Modalità Test:</label>
+                                    <input type="checkbox" id="test-mode" checked>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-actions">
+                            <button id="save-settings" class="admin-btn admin-btn-primary">Salva Impostazioni</button>
+                            <button id="reset-settings" class="admin-btn admin-btn-danger">Reset</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Sezione Notifiche -->
+                    <div id="notifications-container" class="notifications-container" style="display: none;">
+                        <h3>Sistema Notifiche</h3>
+                        
+                        <div class="notifications-grid">
+                            <div class="notification-card">
+                                <h4>🚨 Alert Eventi Sold-Out</h4>
+                                <div class="notification-item">
+                                    <label>Attiva Alert:</label>
+                                    <input type="checkbox" id="soldout-alerts" checked>
+                                </div>
+                                <div class="notification-item">
+                                    <label>Soglia Avviso (% posti):</label>
+                                    <input type="number" id="soldout-threshold" value="90" min="50" max="100">
+                                </div>
+                            </div>
+                            
+                            <div class="notification-card">
+                                <h4>⏰ Promemoria Scadenze</h4>
+                                <div class="notification-item">
+                                    <label>Promemoria Attivi:</label>
+                                    <input type="checkbox" id="deadline-reminders" checked>
+                                </div>
+                                <div class="notification-item">
+                                    <label>Anticipo Avviso (giorni):</label>
+                                    <input type="number" id="reminder-days" value="7" min="1" max="30">
+                                </div>
+                            </div>
+                            
+                            <div class="notification-card">
+                                <h4>👤 Nuove Iscrizioni</h4>
+                                <div class="notification-item">
+                                    <label>Notifica Iscrizioni:</label>
+                                    <input type="checkbox" id="signup-notifications" checked>
+                                </div>
+                                <div class="notification-item">
+                                    <label>Riepilogo Giornaliero:</label>
+                                    <input type="checkbox" id="daily-summary" checked>
+                                </div>
+                            </div>
+                            
+                            <div class="notification-card">
+                                <h4>📋 Log Attività</h4>
+                                <div class="notification-item">
+                                    <label>Registra Attività:</label>
+                                    <input type="checkbox" id="activity-logging" checked>
+                                </div>
+                                <div class="notification-item">
+                                    <label>Conserva Log (giorni):</label>
+                                    <input type="number" id="log-retention" value="30" min="7" max="365">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="activity-log">
+                            <h4>Log Attività Recenti</h4>
+                            <div id="activity-log-list" class="log-list">
+                                <div class="log-entry">
+                                    <span class="log-time">2024-01-15 14:30</span>
+                                    <span class="log-action">Nuovo evento creato: "Serata Techno"</span>
+                                </div>
+                                <div class="log-entry">
+                                    <span class="log-time">2024-01-15 13:15</span>
+                                    <span class="log-action">Backup automatico completato</span>
+                                </div>
+                                <div class="log-entry">
+                                    <span class="log-time">2024-01-15 12:00</span>
+                                    <span class="log-action">Login amministratore</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="notifications-actions">
+                            <button id="save-notifications" class="admin-btn admin-btn-primary">Salva Configurazione</button>
+                            <button id="test-notifications" class="admin-btn admin-btn-secondary">Test Notifiche</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Sezione Monitoraggio Server -->
+                    <div id="server-container" class="server-container" style="display: none;">
+                        <h3>Monitoraggio Server in Tempo Reale</h3>
+                        
+                        <div class="monitoring-grid">
+                            <div class="monitor-card">
+                                <h4>🌐 Stato Server</h4>
+                                <div class="status-indicator">
+                                    <div id="server-status" class="status-dot status-excellent"></div>
+                                    <span id="server-status-text">Eccellente</span>
+                                </div>
+                                <div class="monitor-stats">
+                                    <div class="stat-item">
+                                        <label>Uptime:</label>
+                                        <span id="server-uptime">0s</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <label>Carico CPU:</label>
+                                        <span id="server-load">0%</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <label>Richieste:</label>
+                                        <span id="server-requests">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <label>Errori:</label>
+                                        <span id="server-errors">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="monitor-card">
+                                <h4>👥 Visitatori Online</h4>
+                                <div class="visitors-count">
+                                    <span id="current-visitors" class="big-number">0</span>
+                                    <span class="visitors-label">visitatori online</span>
+                                </div>
+                                <div class="monitor-stats">
+                                    <div class="stat-item">
+                                        <label>Totale Visite:</label>
+                                        <span id="total-visits">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <label>Picco Giornaliero:</label>
+                                        <span id="daily-peak">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="monitor-card">
+                                <h4>🔐 Amministratori</h4>
+                                <div id="admin-list" class="admin-list">
+                                    <!-- Lista amministratori verrà popolata dinamicamente -->
+                                </div>
+                                <div class="monitor-stats">
+                                    <div class="stat-item">
+                                        <label>Sessioni Attive:</label>
+                                        <span id="active-sessions">1</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="monitor-card">
+                                <h4>📊 Statistiche Eventi</h4>
+                                <div class="monitor-stats">
+                                    <div class="stat-item">
+                                        <label>Eventi Attivi:</label>
+                                        <span id="active-events">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <label>In Attesa:</label>
+                                        <span id="pending-events">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <label>Questo Mese:</label>
+                                        <span id="monthly-events">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="monitoring-actions">
+                            <button id="refresh-stats" class="admin-btn admin-btn-primary">Aggiorna Statistiche</button>
+                            <button id="export-logs" class="admin-btn admin-btn-secondary">Esporta Log</button>
+                            <button id="clear-cache" class="admin-btn admin-btn-danger">Pulisci Cache</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Sezione Eventi (esistente) -->
+                    <div id="event-form-container" class="event-form-container">
+                        <h3 id="form-title">Aggiungi Nuovo Evento</h3>
+                        <form id="event-form" class="event-form">
+                            <input type="hidden" id="event-id">
+                            
+                            <div class="form-group">
+                                <label for="event-title">Titolo Evento</label>
+                                <input type="text" id="event-title" name="title" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="event-day">Giorno</label>
+                                    <input type="number" id="event-day" name="day" min="1" max="31" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="event-month">Mese</label>
+                                    <select id="event-month" name="month" required>
+                                        <option value="GEN">Gennaio</option>
+                                        <option value="FEB">Febbraio</option>
+                                        <option value="MAR">Marzo</option>
+                                        <option value="APR">Aprile</option>
+                                        <option value="MAG">Maggio</option>
+                                        <option value="GIU">Giugno</option>
+                                        <option value="LUG">Luglio</option>
+                                        <option value="AGO">Agosto</option>
+                                        <option value="SET">Settembre</option>
+                                        <option value="OTT">Ottobre</option>
+                                        <option value="NOV">Novembre</option>
+                                        <option value="DIC">Dicembre</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="event-year">Anno</label>
+                                    <input type="number" id="event-year" name="year" min="2024" max="2030" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="event-genre">Genere</label>
+                                <input type="text" id="event-genre" name="genre" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="event-artist">Artista</label>
+                                <input type="text" id="event-artist" name="artist" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="event-venue">Location</label>
+                                <input type="text" id="event-venue" name="venue" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="event-time">Orario (formato: HH:MM - HH:MM)</label>
+                                <input type="text" id="event-time" name="time" placeholder="21:00 - 04:00" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="event-price">Prezzo (€)</label>
+                                    <input type="number" id="event-price" name="price" min="0" step="1" required>
+                                </div>
+                                
+                                <div class="form-group checkbox-group">
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="event-featured" name="featured">
+                                        <span class="checkmark"></span>
+                                        Evento in Evidenza
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group checkbox-group">
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="event-sold-out" name="soldOut">
+                                        <span class="checkmark"></span>
+                                        Sold Out
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" id="cancel-btn" class="admin-btn admin-btn-secondary">Annulla</button>
+                                <button type="submit" class="admin-btn admin-btn-primary">Salva Evento</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div id="event-preview" class="event-preview">
+                        <h3>Anteprima Evento</h3>
+                        <div class="preview-container">
+                            <!-- L'anteprima dell'evento verrà mostrata qui -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestione Server -->
+            <div id="server-container" class="admin-section" style="display: none;">
+                <h2>Gestione Server</h2>
+                
+                <!-- Stato Server -->
+                <div class="server-grid">
+                    <div class="server-card">
+                        <h3>Stato Server</h3>
+                        <div class="server-status">
+                            <div class="status-indicator" id="server-status-indicator">
+                                <span class="status-dot online"></span>
+                                <span id="server-status-text">Online</span>
+                            </div>
+                            <div class="server-info">
+                                <div class="info-item">
+                                    <span class="info-label">URL:</span>
+                                    <span class="info-value" id="server-url">http://localhost:8001</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Uptime:</span>
+                                    <span class="info-value" id="server-uptime">--</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Ultimo aggiornamento:</span>
+                                    <span class="info-value" id="last-update">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="server-card">
+                        <h3>Deployment</h3>
+                        <div class="deployment-actions">
+                            <button class="action-btn primary" id="publish-site">
+                                <i class="fas fa-upload"></i>
+                                Pubblica Sito
+                            </button>
+                            <button class="action-btn secondary" id="backup-before-deploy">
+                                <i class="fas fa-save"></i>
+                                Backup & Deploy
+                            </button>
+                            <button class="action-btn" id="rollback-deploy">
+                                <i class="fas fa-undo"></i>
+                                Rollback
+                            </button>
+                        </div>
+                        <div class="deployment-status" id="deployment-status">
+                            <span class="status-text">Pronto per il deployment</span>
+                        </div>
+                    </div>
+
+                    <div class="server-card">
+                        <h3>Statistiche</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-value" id="total-visits">0</span>
+                                <span class="stat-label">Visite Totali</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="today-visits">0</span>
+                                <span class="stat-label">Visite Oggi</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="active-events">0</span>
+                                <span class="stat-label">Eventi Attivi</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="total-registrations">0</span>
+                                <span class="stat-label">Iscrizioni</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configurazione Server -->
+                <div class="server-config">
+                    <h3>Configurazione Server</h3>
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <label for="domain-name">Nome Dominio:</label>
+                            <input type="text" id="domain-name" placeholder="es. purpleclub.com">
+                        </div>
+                        <div class="config-item">
+                            <label for="ssl-enabled">SSL Abilitato:</label>
+                            <input type="checkbox" id="ssl-enabled" checked>
+                        </div>
+                        <div class="config-item">
+                            <label for="cdn-enabled">CDN Abilitato:</label>
+                            <input type="checkbox" id="cdn-enabled">
+                        </div>
+                        <div class="config-item">
+                            <label for="cache-duration">Durata Cache (ore):</label>
+                            <select id="cache-duration">
+                                <option value="1">1 ora</option>
+                                <option value="6">6 ore</option>
+                                <option value="24" selected>24 ore</option>
+                                <option value="168">1 settimana</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="config-actions">
+                        <button class="action-btn primary" id="save-server-config">
+                            <i class="fas fa-save"></i>
+                            Salva Configurazione
+                        </button>
+                        <button class="action-btn secondary" id="test-config">
+                            <i class="fas fa-flask"></i>
+                            Test Configurazione
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Log Deployment -->
+                <div class="deployment-log">
+                    <h3>Log Deployment</h3>
+                    <div class="log-container" id="deployment-log-container">
+                        <div class="log-entry">
+                            <span class="log-time">--</span>
+                            <span class="log-message">Nessun deployment effettuato</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="admin.js"></script>
+    
+    <script>
+        // Funzione per inizializzare l'interfaccia admin
+        function initializeAdminInterface() {
+            console.log('🎯 Inizializzazione interfaccia admin...');
+            
+            // Aggiorna informazioni amministratore corrente
+            updateCurrentAdminInfo();
+            
+            // Popola lista amministratori
+            populateAdminList();
+            
+            // Avvia aggiornamento statistiche
+            startStatsUpdates();
+            
+            // Gestione click sui pulsanti sidebar
+            setupSidebarNavigation();
+            
+            // Gestione eventi monitoraggio
+            setupMonitoringEvents();
+        }
+        
+        function updateCurrentAdminInfo() {
+            const currentAdmin = window.adminAuth?.getCurrentAdmin();
+            if (currentAdmin) {
+                // Aggiorna messaggio di benvenuto
+                const welcomeMsg = document.getElementById('welcome-message');
+                if (welcomeMsg) {
+                    const welcomeContent = welcomeMsg.querySelector('.welcome-content h3');
+                    if (welcomeContent) {
+                        welcomeContent.textContent = `Benvenuto, ${currentAdmin.name}!`;
+                    }
+                }
+                
+                // Aggiorna badge admin nella navbar
+                const adminBadge = document.querySelector('.admin-badge');
+                if (adminBadge) {
+                    adminBadge.textContent = currentAdmin.role.toUpperCase();
+                }
+            }
+        }
+        
+        function populateAdminList() {
+            const adminList = document.getElementById('admin-list');
+            if (!adminList || !window.ADMIN_ACCOUNTS) return;
+            
+            adminList.innerHTML = '';
+            
+            Object.entries(window.ADMIN_ACCOUNTS).forEach(([email, admin]) => {
+                const adminItem = document.createElement('div');
+                adminItem.className = 'admin-item';
+                
+                const currentAdmin = window.adminAuth?.getCurrentAdmin();
+                const isCurrentUser = currentAdmin && currentAdmin.email === email;
+                
+                adminItem.innerHTML = `
+                    <div class="admin-info">
+                        <div class="admin-name">${admin.name}</div>
+                        <div class="admin-role">${admin.role}</div>
+                    </div>
+                    <div class="admin-status ${isCurrentUser ? 'online' : 'offline'}"></div>
+                `;
+                
+                adminList.appendChild(adminItem);
+            });
+        }
+        
+        function startStatsUpdates() {
+            // Aggiorna statistiche immediatamente
+            updateStats();
+            
+            // Ascolta aggiornamenti dal sistema di monitoraggio
+            window.addEventListener('adminStatsUpdate', (event) => {
+                updateStatsDisplay(event.detail);
+            });
+            
+            // Aggiorna statistiche eventi
+            updateEventStats();
+        }
+        
+        function updateStats() {
+            if (!window.monitoring) return;
+            
+            const stats = window.monitoring.getStats();
+            updateStatsDisplay(stats);
+        }
+        
+        function updateStatsDisplay(stats) {
+            // Aggiorna stato server
+            const serverStatus = document.getElementById('server-status');
+            const serverStatusText = document.getElementById('server-status-text');
+            const serverUptime = document.getElementById('server-uptime');
+            const serverLoad = document.getElementById('server-load');
+            const serverRequests = document.getElementById('server-requests');
+            const serverErrors = document.getElementById('server-errors');
+            
+            if (serverStatus && serverStatusText) {
+                serverStatus.className = `status-dot status-${stats.server.status}`;
+                serverStatusText.textContent = getStatusText(stats.server.status);
+            }
+            
+            if (serverUptime) serverUptime.textContent = stats.server.uptime;
+            if (serverLoad) serverLoad.textContent = `${stats.server.load}%`;
+            if (serverRequests) serverRequests.textContent = stats.server.requests;
+            if (serverErrors) serverErrors.textContent = stats.server.errors;
+            
+            // Aggiorna visitatori
+            const currentVisitors = document.getElementById('current-visitors');
+            const totalVisits = document.getElementById('total-visits');
+            const dailyPeak = document.getElementById('daily-peak');
+            
+            if (currentVisitors) currentVisitors.textContent = stats.visitors.current;
+            if (totalVisits) totalVisits.textContent = stats.visitors.total;
+            if (dailyPeak) {
+                const peak = Math.max(stats.visitors.current, parseInt(dailyPeak.textContent) || 0);
+                dailyPeak.textContent = peak;
+            }
+        }
+        
+        function getStatusText(status) {
+            const statusMap = {
+                'excellent': 'Eccellente',
+                'good': 'Buono',
+                'warning': 'Attenzione',
+                'critical': 'Critico'
+            };
+            return statusMap[status] || 'Sconosciuto';
+        }
+        
+        async function updateEventStats() {
+            if (!window.dbManager) return;
+            
+            try {
+                // Carica eventi attivi
+                const events = await window.dbManager.loadEvents();
+                const activeEvents = document.getElementById('active-events');
+                if (activeEvents) activeEvents.textContent = events.length;
+                
+                // Carica eventi in attesa
+                const pendingEvents = await window.dbManager.loadPendingEvents();
+                const pendingCount = document.getElementById('pending-events');
+                if (pendingCount) pendingCount.textContent = pendingEvents.length;
+                
+                // Calcola eventi del mese
+                const currentMonth = new Date().getMonth();
+                const monthlyEvents = events.filter(event => {
+                    const eventDate = new Date(event.date || event.createdAt);
+                    return eventDate.getMonth() === currentMonth;
+                });
+                const monthlyCount = document.getElementById('monthly-events');
+                if (monthlyCount) monthlyCount.textContent = monthlyEvents.length;
+                
+            } catch (error) {
+                console.error('❌ Errore aggiornamento statistiche eventi:', error);
+            }
+        }
+        
+        function setupSidebarNavigation() {
+            // Gestione click sui pulsanti sidebar
+            const settingsBtn = document.getElementById('settings-btn');
+            const notificationsBtn = document.getElementById('notifications-btn');
+            const serverBtn = document.getElementById('server-btn');
+            
+            const settingsContainer = document.getElementById('settings-container');
+            const notificationsContainer = document.getElementById('notifications-container');
+            const serverContainer = document.getElementById('server-container');
+            
+            function hideAllContainers() {
+                if (settingsContainer) settingsContainer.style.display = 'none';
+                if (notificationsContainer) notificationsContainer.style.display = 'none';
+                if (serverContainer) serverContainer.style.display = 'none';
+            }
+            
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', () => {
+                    hideAllContainers();
+                    if (settingsContainer) settingsContainer.style.display = 'block';
+                });
+            }
+            
+            if (notificationsBtn) {
+                notificationsBtn.addEventListener('click', () => {
+                    hideAllContainers();
+                    if (notificationsContainer) notificationsContainer.style.display = 'block';
+                });
+            }
+            
+            if (serverBtn) {
+                serverBtn.addEventListener('click', () => {
+                    hideAllContainers();
+                    if (serverContainer) serverContainer.style.display = 'block';
+                });
+            }
+        }
+        
+        function setupMonitoringEvents() {
+            // Pulsante aggiorna statistiche
+            const refreshBtn = document.getElementById('refresh-stats');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    updateStats();
+                    updateEventStats();
+                    console.log('📊 Statistiche aggiornate manualmente');
+                });
+            }
+            
+            // Pulsante esporta log
+            const exportBtn = document.getElementById('export-logs');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    exportLogs();
+                });
+            }
+            
+            // Pulsante pulisci cache
+            const clearBtn = document.getElementById('clear-cache');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    clearCache();
+                });
+            }
+            
+            // Logout
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    if (window.adminAuth) {
+                        window.adminAuth.logout();
+                    }
+                });
+            }
+        }
+        
+        function exportLogs() {
+            const logs = {
+                timestamp: new Date().toISOString(),
+                server: window.monitoring?.getStats() || {},
+                admin: window.adminAuth?.getCurrentAdmin() || {},
+                events: 'Dati eventi non disponibili'
+            };
+            
+            const dataStr = JSON.stringify(logs, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `purple-club-logs-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            console.log('📄 Log esportati');
+        }
+        
+        function clearCache() {
+            if (confirm('Sei sicuro di voler pulire la cache? Questa operazione rimuoverà tutti i dati temporanei.')) {
+                // Pulisci localStorage (mantieni solo sessione admin)
+                const adminSession = localStorage.getItem('purpleclub_admin_session');
+                localStorage.clear();
+                if (adminSession) {
+                    localStorage.setItem('purpleclub_admin_session', adminSession);
+                }
+                
+                // Pulisci sessionStorage
+                sessionStorage.clear();
+                
+                console.log('🧹 Cache pulita');
+                alert('Cache pulita con successo!');
+            }
+        }
+        
+        // Avvia aggiornamenti periodici
+        setInterval(() => {
+            updateStats();
+            updateEventStats();
+        }, 30000); // Ogni 30 secondi
+        
+        console.log('✅ Sistema di monitoraggio admin inizializzato');
+    </script>
+</body>
+</html>

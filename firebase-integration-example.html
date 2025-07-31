@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esempio Integrazione Firebase - Purple Club</title>
+    
+    <!-- Firebase SDK v9 (modular) -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        // Your Firebase configuration (SOSTITUISCI CON I TUOI DATI)
+        const firebaseConfig = {
+            apiKey: "your-api-key-here",
+            authDomain: "your-project-id.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project-id.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id-here"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Make Firebase available globally
+        window.firebaseApp = app;
+        window.firebaseDb = db;
+        window.firebaseAuth = auth;
+        
+        console.log('🔥 Firebase inizializzato correttamente!');
+        
+        // Import and initialize database manager
+        import('./database.js').then(module => {
+            window.dbManager = module.dbManager;
+            console.log('📊 Database Manager caricato!');
+        }).catch(error => {
+            console.log('⚠️ Database Manager non disponibile:', error);
+        });
+    </script>
+    
+    <!-- Stili esistenti del Purple Club -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Firebase Integration Example</h1>
+        
+        <div class="integration-guide">
+            <h2>📋 Come Integrare Firebase</h2>
+            
+            <div class="step">
+                <h3>1. Aggiungi questo codice nel &lt;head&gt; di index.html:</h3>
+                <pre><code>&lt;!-- Firebase SDK v9 (modular) --&gt;
+&lt;script type="module"&gt;
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    
+    const firebaseConfig = {
+        apiKey: "TUO-API-KEY",
+        authDomain: "tuo-progetto.firebaseapp.com",
+        projectId: "tuo-progetto-id",
+        storageBucket: "tuo-progetto.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "tuo-app-id"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    window.firebaseApp = app;
+    window.firebaseDb = db;
+    
+    // Carica il database manager
+    import('./database.js').then(module => {
+        window.dbManager = module.dbManager;
+    });
+&lt;/script&gt;</code></pre>
+            </div>
+            
+            <div class="step">
+                <h3>2. Aggiungi lo stesso codice in admin.html</h3>
+                <p>Copia il codice sopra anche nel file admin.html, prima del tag &lt;/head&gt;</p>
+            </div>
+            
+            <div class="step">
+                <h3>3. Configura le credenziali Firebase</h3>
+                <p>Sostituisci i valori nel firebaseConfig con quelli del tuo progetto Firebase</p>
+            </div>
+            
+            <div class="step">
+                <h3>4. Test della connessione</h3>
+                <button onclick="testFirebaseConnection()">🧪 Testa Connessione Firebase</button>
+                <div id="connection-status"></div>
+            </div>
+            
+            <div class="step">
+                <h3>5. Migrazione dati</h3>
+                <button onclick="migrateData()">🔄 Migra Eventi da localStorage</button>
+                <div id="migration-status"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Test functions
+        async function testFirebaseConnection() {
+            const statusDiv = document.getElementById('connection-status');
+            
+            if (window.dbManager) {
+                try {
+                    const connected = await window.dbManager.testConnection();
+                    if (connected) {
+                        statusDiv.innerHTML = '<div class="success">✅ Connessione Firebase attiva!</div>';
+                    } else {
+                        statusDiv.innerHTML = '<div class="error">❌ Connessione Firebase fallita</div>';
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="error">❌ Errore: ${error.message}</div>`;
+                }
+            } else {
+                statusDiv.innerHTML = '<div class="warning">⚠️ Database Manager non disponibile</div>';
+            }
+        }
+        
+        async function migrateData() {
+            const statusDiv = document.getElementById('migration-status');
+            
+            if (window.dbManager) {
+                try {
+                    statusDiv.innerHTML = '<div class="info">🔄 Migrazione in corso...</div>';
+                    await window.dbManager.syncLocalStorageToFirebase();
+                    statusDiv.innerHTML = '<div class="success">✅ Migrazione completata!</div>';
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="error">❌ Errore migrazione: ${error.message}</div>`;
+                }
+            } else {
+                statusDiv.innerHTML = '<div class="warning">⚠️ Database Manager non disponibile</div>';
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #764ba2;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        
+        button:hover {
+            background: #5a6fd8;
+        }
+        
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</body>
+</html>

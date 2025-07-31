@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pulizia Multi-Browser - Purple Club</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .browser-section {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #ff0080;
+        }
+        button {
+            background: #ff0080;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #cc0066;
+        }
+        .warning {
+            background: #ff4444;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #44ff44;
+            color: #000;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #4444ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Pulizia Multi-Browser Purple Club</h1>
+        
+        <div class="warning">
+            <h3>⚠️ IMPORTANTE</h3>
+            <p>Ogni browser (Chrome, Firefox, Safari, Edge) mantiene il proprio localStorage separato!</p>
+            <p>Devi aprire questa pagina in OGNI browser che hai usato per visitare il sito.</p>
+        </div>
+        
+        <div class="browser-section">
+            <h3>🧹 Pulizia Completa per questo Browser</h3>
+            <p id="browser-info">Rilevamento browser in corso...</p>
+            <button onclick="clearEverything()">🗑️ PULISCI TUTTO</button>
+            <button onclick="checkCurrentStorage()">🔍 Controlla Storage</button>
+        </div>
+        
+        <div class="info">
+            <h3>📋 Istruzioni per tutti i browser:</h3>
+            <ol style="text-align: left; max-width: 600px; margin: 0 auto;">
+                <li><strong>Chrome:</strong> Apri questa pagina e clicca "PULISCI TUTTO"</li>
+                <li><strong>Firefox:</strong> Apri questa pagina e clicca "PULISCI TUTTO"</li>
+                <li><strong>Safari:</strong> Apri questa pagina e clicca "PULISCI TUTTO"</li>
+                <li><strong>Edge:</strong> Apri questa pagina e clicca "PULISCI TUTTO"</li>
+                <li><strong>Altri browser:</strong> Ripeti per ogni browser usato</li>
+            </ol>
+        </div>
+        
+        <div id="status" class="info">
+            <p>Pronto per la pulizia...</p>
+        </div>
+        
+        <button onclick="goToSite()">🏠 Vai al Sito Pulito</button>
+    </div>
+
+    <script>
+        // Rileva il browser
+        function detectBrowser() {
+            const userAgent = navigator.userAgent;
+            let browserName = 'Browser Sconosciuto';
+            
+            if (userAgent.includes('Edg')) {
+                browserName = 'Microsoft Edge';
+            } else if (userAgent.includes('Chrome')) {
+                browserName = 'Google Chrome';
+            } else if (userAgent.includes('Firefox')) {
+                browserName = 'Mozilla Firefox';
+            } else if (userAgent.includes('Safari')) {
+                browserName = 'Safari';
+            }
+            
+            return browserName;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = type;
+            statusDiv.innerHTML = `<p>${message}</p>`;
+        }
+        
+        function clearEverything() {
+            const browser = detectBrowser();
+            updateStatus(`🧹 Pulizia in corso per ${browser}...`, 'info');
+            
+            try {
+                // 1. Pulisci localStorage
+                const localStorageCount = localStorage.length;
+                localStorage.clear();
+                
+                // 2. Pulisci sessionStorage
+                const sessionStorageCount = sessionStorage.length;
+                sessionStorage.clear();
+                
+                // 3. Pulisci IndexedDB se disponibile
+                if ('indexedDB' in window) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(db => {
+                            indexedDB.deleteDatabase(db.name);
+                        });
+                    }).catch(() => {});
+                }
+                
+                // 4. Pulisci cache se disponibile
+                if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                        for (let name of names) {
+                            caches.delete(name);
+                        }
+                    }).catch(() => {});
+                }
+                
+                // 5. Pulisci cookies del dominio
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                updateStatus(`✅ Pulizia completata per ${browser}!<br>
+                    📊 localStorage: ${localStorageCount} elementi rimossi<br>
+                    📊 sessionStorage: ${sessionStorageCount} elementi rimossi<br>
+                    🍪 Cookies puliti<br>
+                    💾 Cache pulita`, 'success');
+                
+            } catch (error) {
+                updateStatus(`❌ Errore durante la pulizia: ${error.message}`, 'warning');
+            }
+        }
+        
+        function checkCurrentStorage() {
+            const browser = detectBrowser();
+            let html = `<h3>📊 Stato Storage per ${browser}:</h3>`;
+            
+            // localStorage
+            html += `<p><strong>localStorage:</strong> ${localStorage.length} elementi</p>`;
+            if (localStorage.length > 0) {
+                for (let i = 0; i < Math.min(localStorage.length, 10); i++) {
+                    const key = localStorage.key(i);
+                    html += `<p style="font-size: 12px;">• ${key}</p>`;
+                }
+                if (localStorage.length > 10) {
+                    html += `<p style="font-size: 12px;">... e altri ${localStorage.length - 10} elementi</p>`;
+                }
+            }
+            
+            // sessionStorage
+            html += `<p><strong>sessionStorage:</strong> ${sessionStorage.length} elementi</p>`;
+            
+            // Cookies
+            const cookieCount = document.cookie.split(';').filter(c => c.trim()).length;
+            html += `<p><strong>Cookies:</strong> ${cookieCount} elementi</p>`;
+            
+            if (localStorage.length === 0 && sessionStorage.length === 0 && cookieCount === 0) {
+                html += '<p style="color: #00ff00; font-weight: bold;">✅ Tutto pulito in questo browser!</p>';
+                updateStatus(html, 'success');
+            } else {
+                html += '<p style="color: #ffaa00;">⚠️ Ci sono ancora dati da pulire</p>';
+                updateStatus(html, 'warning');
+            }
+        }
+        
+        function goToSite() {
+            // Vai al sito con parametro nocache e timestamp
+            window.location.href = `index.html?nocache=${Date.now()}&browser=${encodeURIComponent(detectBrowser())}`;
+        }
+        
+        // Inizializzazione
+        window.onload = function() {
+            const browser = detectBrowser();
+            document.getElementById('browser-info').innerHTML = `🌐 Browser rilevato: <strong>${browser}</strong>`;
+            checkCurrentStorage();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Firebase - Purple Club</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #764ba2;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        .code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Setup Firebase per Purple Club</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Importante:</strong> Segui questi passaggi nell'ordine indicato per configurare correttamente il database cloud.
+        </div>
+
+        <h2>📋 Panoramica</h2>
+        <p>Questa guida ti aiuterà a:</p>
+        <ul>
+            <li>Creare un progetto Firebase gratuito</li>
+            <li>Configurare Firestore Database</li>
+            <li>Integrare Firebase nel tuo sito</li>
+            <li>Migrare gli eventi esistenti</li>
+        </ul>
+
+        <h2>🚀 Passo 1: Crea un Progetto Firebase</h2>
+        <div class="step">
+            <ol>
+                <li>Vai su <a href="https://console.firebase.google.com" target="_blank" class="btn">Firebase Console</a></li>
+                <li>Clicca su "Aggiungi progetto" o "Create a project"</li>
+                <li>Nome progetto: <code>purple-club-[tuo-nome]</code></li>
+                <li>Disabilita Google Analytics (non necessario)</li>
+                <li>Clicca "Crea progetto"</li>
+            </ol>
+        </div>
+
+        <h2>🗄️ Passo 2: Configura Firestore Database</h2>
+        <div class="step">
+            <ol>
+                <li>Nel menu laterale, clicca su "Firestore Database"</li>
+                <li>Clicca "Crea database"</li>
+                <li>Scegli "Inizia in modalità test" (per ora)</li>
+                <li>Seleziona una location vicina (es. europe-west3)</li>
+                <li>Clicca "Fine"</li>
+            </ol>
+        </div>
+
+        <h2>🔧 Passo 3: Ottieni le Credenziali</h2>
+        <div class="step">
+            <ol>
+                <li>Vai su "Impostazioni progetto" (icona ingranaggio)</li>
+                <li>Scorri fino a "Le tue app"</li>
+                <li>Clicca sull'icona web "&lt;/&gt;"</li>
+                <li>Nome app: "Purple Club Web"</li>
+                <li>NON selezionare "Configura anche Firebase Hosting"</li>
+                <li>Clicca "Registra app"</li>
+                <li>Copia la configurazione mostrata</li>
+            </ol>
+        </div>
+
+        <h2>📝 Passo 4: Aggiorna la Configurazione</h2>
+        <div class="step">
+            <p>Apri il file <code>firebase-config.js</code> e sostituisci i valori:</p>
+            <div class="code">
+const firebaseConfig = {
+  apiKey: "AIzaSyC...",  // ← Il tuo API Key
+  authDomain: "purple-club-xxx.firebaseapp.com",
+  projectId: "purple-club-xxx",  // ← Il tuo Project ID
+  storageBucket: "purple-club-xxx.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abc123"
+};
+            </div>
+        </div>
+
+        <h2>🌐 Passo 5: Aggiungi Firebase al Sito</h2>
+        <div class="step">
+            <p>Aggiungi questi script nel <code>&lt;head&gt;</code> di <code>index.html</code> e <code>admin.html</code>:</p>
+            <div class="code">
+&lt;!-- Firebase SDK --&gt;
+&lt;script type="module"&gt;
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+&lt;/script&gt;
+            </div>
+        </div>
+
+        <h2>🔄 Passo 6: Migrazione Automatica</h2>
+        <div class="step">
+            <p>Una volta configurato Firebase:</p>
+            <ol>
+                <li>Apri il pannello admin del sito</li>
+                <li>Apri la Console del browser (F12)</li>
+                <li>Esegui questo comando per migrare gli eventi:</li>
+            </ol>
+            <div class="code">
+// Migra eventi da localStorage a Firebase
+dbManager.syncLocalStorageToFirebase();
+            </div>
+        </div>
+
+        <h2>🛡️ Passo 7: Configura le Regole di Sicurezza</h2>
+        <div class="step">
+            <p>In Firestore Database → Regole, sostituisci con:</p>
+            <div class="code">
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permetti lettura a tutti, scrittura solo agli admin
+    match /events/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+            </div>
+        </div>
+
+        <h2>✅ Passo 8: Test e Verifica</h2>
+        <div class="step">
+            <ol>
+                <li>Ricarica il sito</li>
+                <li>Verifica che gli eventi siano visibili</li>
+                <li>Prova ad aggiungere un nuovo evento dal pannello admin</li>
+                <li>Controlla che appaia in Firebase Console</li>
+            </ol>
+        </div>
+
+        <div class="success">
+            <strong>🎉 Congratulazioni!</strong> Il tuo Purple Club ora usa un database cloud professionale. Gli eventi saranno visibili a tutti i visitatori in tempo reale!
+        </div>
+
+        <h2>💡 Vantaggi Ottenuti</h2>
+        <ul>
+            <li>✅ Eventi visibili a tutti i visitatori</li>
+            <li>✅ Sincronizzazione in tempo reale</li>
+            <li>✅ Backup automatico nel cloud</li>
+            <li>✅ Scalabilità professionale</li>
+            <li>✅ Gratuito fino a 50.000 letture/giorno</li>
+        </ul>
+
+        <div class="warning">
+            <strong>📞 Supporto:</strong> Se hai problemi, controlla la Console del browser per eventuali errori e verifica che la configurazione Firebase sia corretta.
+        </div>
+    </div>
+</body>
+</html>

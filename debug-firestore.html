@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Firestore - Purple Club</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #ff0080;
+        }
+        button {
+            background: #ff0080;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #cc0066;
+        }
+        .success {
+            background: #44ff44;
+            color: #000;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ff4444;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #4444ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        pre {
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Firestore - Purple Club</h1>
+    
+    <div class="test-section">
+        <h3>🔥 Test Firebase Inizializzazione</h3>
+        <button onclick="testFirebaseInit()">Test Inizializzazione</button>
+        <div id="init-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📝 Test Scrittura Firestore</h3>
+        <button onclick="testFirestoreWrite()">Test Scrittura</button>
+        <div id="write-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📖 Test Lettura Firestore</h3>
+        <button onclick="testFirestoreRead()">Test Lettura</button>
+        <div id="read-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🗑️ Test Cancellazione</h3>
+        <button onclick="testFirestoreDelete()">Pulisci Test</button>
+        <div id="delete-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🔄 Test Completo</h3>
+        <button onclick="runFullTest()">Esegui Test Completo</button>
+        <div id="full-result"></div>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDONUlWkpq-0ZMPPmigQ6gczz2ghfem1hU",
+            authDomain: "purple-club-d6080.firebaseapp.com",
+            projectId: "purple-club-d6080",
+            storageBucket: "purple-club-d6080.firebasestorage.app",
+            messagingSenderId: "113484849723",
+            appId: "1:113484849723:web:cde485c5028fa829f9321e"
+        };
+        
+        let app, db;
+        let testDocId = null;
+        
+        function addResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            element.innerHTML += `<div class="${className}">${message}</div>`;
+        }
+        
+        window.testFirebaseInit = function() {
+            const resultDiv = document.getElementById('init-result');
+            resultDiv.innerHTML = '';
+            
+            try {
+                addResult('init-result', '🔄 Inizializzazione Firebase...', 'info');
+                
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                
+                addResult('init-result', '✅ Firebase inizializzato con successo!', 'success');
+                addResult('init-result', `📊 Project ID: ${firebaseConfig.projectId}`, 'info');
+                addResult('init-result', `🔗 Auth Domain: ${firebaseConfig.authDomain}`, 'info');
+                
+            } catch (error) {
+                addResult('init-result', `❌ Errore inizializzazione: ${error.message}`, 'error');
+                console.error('Errore Firebase init:', error);
+            }
+        };
+        
+        window.testFirestoreWrite = async function() {
+            const resultDiv = document.getElementById('write-result');
+            resultDiv.innerHTML = '';
+            
+            if (!db) {
+                addResult('write-result', '⚠️ Firebase non inizializzato. Esegui prima il test di inizializzazione.', 'error');
+                return;
+            }
+            
+            try {
+                addResult('write-result', '🔄 Tentativo scrittura documento di test...', 'info');
+                
+                const testData = {
+                    name: 'Test Debug',
+                    timestamp: new Date().toISOString(),
+                    type: 'debug-test',
+                    message: 'Questo è un test per verificare le regole Firestore'
+                };
+                
+                const docRef = await addDoc(collection(db, 'debug-test'), testData);
+                testDocId = docRef.id;
+                
+                addResult('write-result', '✅ Documento scritto con successo!', 'success');
+                addResult('write-result', `📄 Document ID: ${testDocId}`, 'info');
+                addResult('write-result', `<pre>${JSON.stringify(testData, null, 2)}</pre>`, 'info');
+                
+            } catch (error) {
+                addResult('write-result', `❌ Errore scrittura: ${error.code}`, 'error');
+                addResult('write-result', `📝 Messaggio: ${error.message}`, 'error');
+                
+                if (error.code === 'permission-denied') {
+                    addResult('write-result', '🚫 PROBLEMA: Le regole Firestore stanno bloccando la scrittura!', 'error');
+                    addResult('write-result', '💡 SOLUZIONE: Vai su console.firebase.google.com e aggiorna le regole di sicurezza', 'info');
+                }
+                
+                console.error('Errore Firestore write:', error);
+            }
+        };
+        
+        window.testFirestoreRead = async function() {
+            const resultDiv = document.getElementById('read-result');
+            resultDiv.innerHTML = '';
+            
+            if (!db) {
+                addResult('read-result', '⚠️ Firebase non inizializzato. Esegui prima il test di inizializzazione.', 'error');
+                return;
+            }
+            
+            try {
+                addResult('read-result', '🔄 Tentativo lettura collezione debug-test...', 'info');
+                
+                const querySnapshot = await getDocs(collection(db, 'debug-test'));
+                
+                addResult('read-result', '✅ Lettura completata con successo!', 'success');
+                addResult('read-result', `📊 Documenti trovati: ${querySnapshot.size}`, 'info');
+                
+                querySnapshot.forEach((doc) => {
+                    addResult('read-result', `<pre>ID: ${doc.id}\nData: ${JSON.stringify(doc.data(), null, 2)}</pre>`, 'info');
+                });
+                
+                if (querySnapshot.size === 0) {
+                    addResult('read-result', '📝 Nessun documento trovato. Prova prima a scrivere un documento di test.', 'info');
+                }
+                
+            } catch (error) {
+                addResult('read-result', `❌ Errore lettura: ${error.code}`, 'error');
+                addResult('read-result', `📝 Messaggio: ${error.message}`, 'error');
+                
+                if (error.code === 'permission-denied') {
+                    addResult('read-result', '🚫 PROBLEMA: Le regole Firestore stanno bloccando la lettura!', 'error');
+                    addResult('read-result', '💡 SOLUZIONE: Vai su console.firebase.google.com e aggiorna le regole di sicurezza', 'info');
+                }
+                
+                console.error('Errore Firestore read:', error);
+            }
+        };
+        
+        window.testFirestoreDelete = async function() {
+            const resultDiv = document.getElementById('delete-result');
+            resultDiv.innerHTML = '';
+            
+            if (!db) {
+                addResult('delete-result', '⚠️ Firebase non inizializzato.', 'error');
+                return;
+            }
+            
+            try {
+                addResult('delete-result', '🔄 Pulizia documenti di test...', 'info');
+                
+                const querySnapshot = await getDocs(collection(db, 'debug-test'));
+                
+                let deletedCount = 0;
+                for (const docSnapshot of querySnapshot.docs) {
+                    await deleteDoc(doc(db, 'debug-test', docSnapshot.id));
+                    deletedCount++;
+                }
+                
+                addResult('delete-result', `✅ Pulizia completata! ${deletedCount} documenti eliminati.`, 'success');
+                testDocId = null;
+                
+            } catch (error) {
+                addResult('delete-result', `❌ Errore cancellazione: ${error.code}`, 'error');
+                addResult('delete-result', `📝 Messaggio: ${error.message}`, 'error');
+                console.error('Errore Firestore delete:', error);
+            }
+        };
+        
+        window.runFullTest = async function() {
+            const resultDiv = document.getElementById('full-result');
+            resultDiv.innerHTML = '';
+            
+            addResult('full-result', '🚀 Avvio test completo...', 'info');
+            
+            // Test 1: Inizializzazione
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                addResult('full-result', '✅ 1/4 - Inizializzazione completata', 'success');
+            } catch (error) {
+                addResult('full-result', `❌ 1/4 - Inizializzazione fallita: ${error.message}`, 'error');
+                return;
+            }
+            
+            // Test 2: Scrittura
+            try {
+                const testData = {
+                    name: 'Full Test',
+                    timestamp: new Date().toISOString(),
+                    test: 'complete'
+                };
+                const docRef = await addDoc(collection(db, 'debug-test'), testData);
+                testDocId = docRef.id;
+                addResult('full-result', '✅ 2/4 - Scrittura completata', 'success');
+            } catch (error) {
+                addResult('full-result', `❌ 2/4 - Scrittura fallita: ${error.code}`, 'error');
+                if (error.code === 'permission-denied') {
+                    addResult('full-result', '🚫 Le regole Firestore bloccano la scrittura!', 'error');
+                }
+                return;
+            }
+            
+            // Test 3: Lettura
+            try {
+                const querySnapshot = await getDocs(collection(db, 'debug-test'));
+                addResult('full-result', `✅ 3/4 - Lettura completata (${querySnapshot.size} docs)`, 'success');
+            } catch (error) {
+                addResult('full-result', `❌ 3/4 - Lettura fallita: ${error.code}`, 'error');
+                return;
+            }
+            
+            // Test 4: Pulizia
+            try {
+                if (testDocId) {
+                    await deleteDoc(doc(db, 'debug-test', testDocId));
+                }
+                addResult('full-result', '✅ 4/4 - Pulizia completata', 'success');
+                addResult('full-result', '🎉 TUTTI I TEST SUPERATI! Firestore funziona correttamente.', 'success');
+            } catch (error) {
+                addResult('full-result', `❌ 4/4 - Pulizia fallita: ${error.code}`, 'error');
+            }
+        };
+        
+        // Auto-inizializzazione
+        window.addEventListener('load', () => {
+            testFirebaseInit();
+        });
+    </script>
+</body>
+</html>

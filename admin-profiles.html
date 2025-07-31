@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Profili Amministratori - Purple Club</title>
+    <link rel="stylesheet" href="admin-styles.css">
+    <style>
+        .profile-card {
+            background: rgba(139, 69, 255, 0.1);
+            border: 1px solid #8b45ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .profile-card:hover {
+            background: rgba(139, 69, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .profile-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .profile-info h3 {
+            color: #8b45ff;
+            margin: 0 0 5px 0;
+        }
+        
+        .profile-info p {
+            color: #ccc;
+            margin: 0;
+        }
+        
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-edit, .btn-delete {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-edit {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #45a049;
+        }
+        
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #da190b;
+        }
+        
+        .add-profile-form {
+            background: rgba(139, 69, 255, 0.05);
+            border: 2px dashed #8b45ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #8b45ff;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #8b45ff;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #a855f7;
+            box-shadow: 0 0 10px rgba(139, 69, 255, 0.3);
+        }
+        
+        .btn-add {
+            background: #8b45ff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-add:hover {
+            background: #a855f7;
+            transform: translateY(-2px);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .modal-content {
+            background: #1a1a1a;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #8b45ff;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #8b45ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>🔧 Gestione Profili Amministratori</h1>
+            <nav class="admin-nav">
+                <a href="admin.html" class="nav-link">← Torna al Dashboard</a>
+            </nav>
+        </header>
+        
+        <main class="admin-main">
+            <section class="admin-section">
+                <h2>Amministratori Attivi</h2>
+                <div id="profiles-list">
+                    <!-- I profili verranno caricati dinamicamente -->
+                </div>
+            </section>
+            
+            <section class="admin-section">
+                <h2>Aggiungi Nuovo Amministratore</h2>
+                <div class="add-profile-form">
+                    <form id="add-profile-form">
+                        <div class="form-group">
+                            <label for="admin-name">Nome Completo:</label>
+                            <input type="text" id="admin-name" name="name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="admin-email">Email:</label>
+                            <input type="email" id="admin-email" name="email" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="admin-password">Password:</label>
+                            <input type="password" id="admin-password" name="password" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="admin-role">Ruolo:</label>
+                            <select id="admin-role" name="role" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid #8b45ff; border-radius: 4px; color: white;">
+                                <option value="admin">Amministratore</option>
+                                <option value="moderator">Moderatore</option>
+                                <option value="editor">Editor</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn-add">Aggiungi Amministratore</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Modal per modifica profilo -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Modifica Amministratore</h2>
+            <form id="edit-profile-form">
+                <div class="form-group">
+                    <label for="edit-name">Nome Completo:</label>
+                    <input type="text" id="edit-name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-email">Email:</label>
+                    <input type="email" id="edit-email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-password">Nuova Password (lascia vuoto per non modificare):</label>
+                    <input type="password" id="edit-password" name="password">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-role">Ruolo:</label>
+                    <select id="edit-role" name="role" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid #8b45ff; border-radius: 4px; color: white;">
+                        <option value="admin">Amministratore</option>
+                        <option value="moderator">Moderatore</option>
+                        <option value="editor">Editor</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-add">Salva Modifiche</button>
+            </form>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { adminAuth } from './admin-config.js';
+        
+        class ProfileManager {
+            constructor() {
+                this.currentEditId = null;
+                this.init();
+            }
+            
+            init() {
+                this.loadProfiles();
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                // Form per aggiungere nuovo profilo
+                document.getElementById('add-profile-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.addProfile();
+                });
+                
+                // Form per modificare profilo
+                document.getElementById('edit-profile-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveProfile();
+                });
+                
+                // Chiusura modal
+                document.querySelector('.close').addEventListener('click', () => {
+                    this.closeModal();
+                });
+                
+                // Chiusura modal cliccando fuori
+                window.addEventListener('click', (e) => {
+                    const modal = document.getElementById('edit-modal');
+                    if (e.target === modal) {
+                        this.closeModal();
+                    }
+                });
+            }
+            
+            loadProfiles() {
+                const profiles = this.getProfiles();
+                const container = document.getElementById('profiles-list');
+                
+                if (profiles.length === 0) {
+                    container.innerHTML = '<p style="color: #ccc; text-align: center;">Nessun amministratore configurato.</p>';
+                    return;
+                }
+                
+                container.innerHTML = profiles.map(profile => `
+                    <div class="profile-card">
+                        <div class="profile-header">
+                            <div class="profile-info">
+                                <h3>${profile.name}</h3>
+                                <p>${profile.email} - ${this.getRoleLabel(profile.role || 'admin')}</p>
+                            </div>
+                            <div class="profile-actions">
+                                <button class="btn-edit" onclick="profileManager.editProfile('${profile.id}')">Modifica</button>
+                                <button class="btn-delete" onclick="profileManager.deleteProfile('${profile.id}')">Elimina</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            getProfiles() {
+                const stored = localStorage.getItem('admin_profiles');
+                if (stored) {
+                    return JSON.parse(stored);
+                }
+                
+                // Carica profili da admin-config.js se non ci sono in localStorage
+                const defaultProfiles = [
+                    {
+                        id: 'michele',
+                        name: 'Michele Traficante',
+                        email: 'michele@purpleclub.it',
+                        password: 'admin123',
+                        role: 'admin'
+                    },
+                    {
+                        id: 'sara',
+                        name: 'Sara Rossi',
+                        email: 'sara@purpleclub.it',
+                        password: 'admin456',
+                        role: 'admin'
+                    },
+                    {
+                        id: 'purple',
+                        name: 'Purple Legacy',
+                        email: 'purple@purpleclub.it',
+                        password: '6510',
+                        role: 'admin'
+                    }
+                ];
+                
+                localStorage.setItem('admin_profiles', JSON.stringify(defaultProfiles));
+                return defaultProfiles;
+            }
+            
+            saveProfiles(profiles) {
+                localStorage.setItem('admin_profiles', JSON.stringify(profiles));
+            }
+            
+            getRoleLabel(role) {
+                const roles = {
+                    'admin': 'Amministratore',
+                    'moderator': 'Moderatore',
+                    'editor': 'Editor'
+                };
+                return roles[role] || 'Amministratore';
+            }
+            
+            addProfile() {
+                const form = document.getElementById('add-profile-form');
+                const formData = new FormData(form);
+                
+                const newProfile = {
+                    id: Date.now().toString(),
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    password: formData.get('password'),
+                    role: formData.get('role')
+                };
+                
+                const profiles = this.getProfiles();
+                
+                // Verifica se l'email esiste già
+                if (profiles.some(p => p.email === newProfile.email)) {
+                    alert('Un amministratore con questa email esiste già!');
+                    return;
+                }
+                
+                profiles.push(newProfile);
+                this.saveProfiles(profiles);
+                this.loadProfiles();
+                form.reset();
+                
+                this.showNotification('Amministratore aggiunto con successo!', 'success');
+            }
+            
+            editProfile(id) {
+                const profiles = this.getProfiles();
+                const profile = profiles.find(p => p.id === id);
+                
+                if (!profile) return;
+                
+                this.currentEditId = id;
+                
+                // Popola il form di modifica
+                document.getElementById('edit-name').value = profile.name;
+                document.getElementById('edit-email').value = profile.email;
+                document.getElementById('edit-password').value = '';
+                document.getElementById('edit-role').value = profile.role || 'admin';
+                
+                // Mostra il modal
+                document.getElementById('edit-modal').style.display = 'block';
+            }
+            
+            saveProfile() {
+                if (!this.currentEditId) return;
+                
+                const form = document.getElementById('edit-profile-form');
+                const formData = new FormData(form);
+                
+                const profiles = this.getProfiles();
+                const profileIndex = profiles.findIndex(p => p.id === this.currentEditId);
+                
+                if (profileIndex === -1) return;
+                
+                // Aggiorna il profilo
+                profiles[profileIndex].name = formData.get('name');
+                profiles[profileIndex].email = formData.get('email');
+                profiles[profileIndex].role = formData.get('role');
+                
+                // Aggiorna la password solo se è stata inserita
+                const newPassword = formData.get('password');
+                if (newPassword.trim()) {
+                    profiles[profileIndex].password = newPassword;
+                }
+                
+                this.saveProfiles(profiles);
+                this.loadProfiles();
+                this.closeModal();
+                
+                this.showNotification('Profilo aggiornato con successo!', 'success');
+            }
+            
+            deleteProfile(id) {
+                if (!confirm('Sei sicuro di voler eliminare questo amministratore?')) {
+                    return;
+                }
+                
+                const profiles = this.getProfiles();
+                const filteredProfiles = profiles.filter(p => p.id !== id);
+                
+                if (filteredProfiles.length === 0) {
+                    alert('Non puoi eliminare tutti gli amministratori!');
+                    return;
+                }
+                
+                this.saveProfiles(filteredProfiles);
+                this.loadProfiles();
+                
+                this.showNotification('Amministratore eliminato con successo!', 'success');
+            }
+            
+            closeModal() {
+                document.getElementById('edit-modal').style.display = 'none';
+                this.currentEditId = null;
+            }
+            
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#8b45ff'};
+                    color: white;
+                    border-radius: 4px;
+                    z-index: 1001;
+                    animation: slideIn 0.3s ease;
+                `;
+                notification.textContent = message;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+        }
+        
+        // Inizializza il gestore profili
+        window.profileManager = new ProfileManager();
+        
+        // Verifica autenticazione
+        if (!adminAuth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

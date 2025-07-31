@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sincronizzazione Eventi - Purple Club</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid #8b5cf6;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .loading {
+            background: #fbbf24;
+            color: #000;
+        }
+        .success {
+            background: #10b981;
+            color: #fff;
+        }
+        .error {
+            background: #ef4444;
+            color: #fff;
+        }
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+        .logs {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: left;
+            font-family: monospace;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Sincronizzazione Eventi Purple Club</h1>
+        <p>Questa pagina sincronizzerà automaticamente gli eventi dal localStorage a Firebase.</p>
+        
+        <div id="status" class="status loading">
+            ⏳ Inizializzazione in corso...
+        </div>
+        
+        <button onclick="startSync()" id="syncBtn">Avvia Sincronizzazione</button>
+        <button onclick="checkEvents()" id="checkBtn">Verifica Eventi</button>
+        <button onclick="clearLogs()" id="clearBtn">Pulisci Log</button>
+        
+        <div id="logs" class="logs"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            query, 
+            orderBy 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { 
+            getAuth, 
+            signInAnonymously 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        // Configurazione Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDONUlWkpq-0ZMPPmigQ6gczz2ghfem1hU",
+            authDomain: "purple-club-d6080.firebaseapp.com",
+            projectId: "purple-club-d6080",
+            storageBucket: "purple-club-d6080.firebasestorage.app",
+            messagingSenderId: "113484849723",
+            appId: "1:113484849723:web:cde485c5028fa829f9321e"
+        };
+        
+        // Inizializza Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let logContainer = document.getElementById('logs');
+        let statusDiv = document.getElementById('status');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `[${timestamp}] ${message}\n`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(message, type = 'loading') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        // Funzioni Firebase integrate
+        async function loadEventsFromFirebase() {
+            try {
+                const eventsRef = collection(db, 'events');
+                const q = query(eventsRef, orderBy('date', 'asc'));
+                const querySnapshot = await getDocs(q);
+                
+                const events = [];
+                querySnapshot.forEach((doc) => {
+                    events.push({ id: doc.id, ...doc.data() });
+                });
+                
+                return events;
+            } catch (error) {
+                console.error('Errore caricamento Firebase:', error);
+                return [];
+            }
+        }
+        
+        function loadEventsFromLocalStorage() {
+            try {
+                const events = localStorage.getItem('purpleClubEvents');
+                return events ? JSON.parse(events) : [];
+            } catch (error) {
+                console.error('Errore localStorage:', error);
+                return [];
+            }
+        }
+        
+        async function saveEventToFirebase(eventData) {
+            try {
+                const eventsRef = collection(db, 'events');
+                const docRef = await addDoc(eventsRef, eventData);
+                return docRef.id;
+            } catch (error) {
+                console.error('Errore salvataggio Firebase:', error);
+                throw error;
+            }
+        }
+        
+        async function authenticateUser() {
+            try {
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                    log('🔐 Autenticazione anonima completata');
+                }
+                return true;
+            } catch (error) {
+                console.error('Errore autenticazione:', error);
+                return false;
+            }
+        }
+        
+        async function testFirebaseConnection() {
+            try {
+                // Prima autentica l'utente
+                const isAuthenticated = await authenticateUser();
+                if (!isAuthenticated) {
+                    throw new Error('Autenticazione fallita');
+                }
+                
+                await getDocs(collection(db, 'events'));
+                return true;
+            } catch (error) {
+                console.error('Test connessione fallito:', error);
+                return false;
+            }
+        }
+        
+        window.startSync = async function() {
+            try {
+                updateStatus('🔄 Sincronizzazione in corso...', 'loading');
+                log('Inizio sincronizzazione eventi...');
+                
+                // Verifica connessione Firebase
+                const isConnected = await testFirebaseConnection();
+                if (!isConnected) {
+                    throw new Error('Connessione Firebase fallita');
+                }
+                log('✅ Connessione Firebase OK');
+                
+                // Carica eventi da localStorage
+                const localEvents = loadEventsFromLocalStorage();
+                log(`📦 Trovati ${localEvents.length} eventi nel localStorage`);
+                
+                if (localEvents.length === 0) {
+                    updateStatus('⚠️ Nessun evento da sincronizzare', 'error');
+                    log('❌ Nessun evento trovato nel localStorage');
+                    return;
+                }
+                
+                // Sincronizza eventi uno per uno
+                let syncedCount = 0;
+                for (const event of localEvents) {
+                    try {
+                        // Rimuovi l'ID locale prima di salvare su Firebase
+                        const { id, ...eventData } = event;
+                        await saveEventToFirebase(eventData);
+                        syncedCount++;
+                        log(`✅ Evento sincronizzato: ${event.title || 'Senza titolo'}`);
+                    } catch (error) {
+                        log(`❌ Errore sincronizzazione evento: ${error.message}`);
+                    }
+                }
+                
+                updateStatus('✅ Sincronizzazione completata!', 'success');
+                log(`🎉 Sincronizzazione completata! ${syncedCount}/${localEvents.length} eventi sincronizzati`);
+                log('🌐 Gli eventi sono ora visibili su Netlify!');
+                
+            } catch (error) {
+                updateStatus('❌ Errore durante la sincronizzazione', 'error');
+                log(`❌ Errore: ${error.message}`);
+                console.error('Errore sincronizzazione:', error);
+            }
+        }
+        
+        window.checkEvents = async function() {
+            try {
+                log('🔍 Verifica eventi in corso...');
+                
+                // Eventi localStorage
+                const localEvents = loadEventsFromLocalStorage();
+                log(`📱 localStorage: ${localEvents.length} eventi`);
+                
+                // Eventi Firebase
+                const firebaseEvents = await loadEventsFromFirebase();
+                log(`☁️ Firebase: ${firebaseEvents.length} eventi`);
+                
+                if (firebaseEvents.length > 0) {
+                    updateStatus('✅ Eventi sincronizzati correttamente!', 'success');
+                    // Mostra dettagli eventi Firebase
+                    firebaseEvents.forEach((event, index) => {
+                        log(`   ${index + 1}. ${event.title || 'Senza titolo'} - ${event.date || 'Senza data'}`);
+                    });
+                } else {
+                    updateStatus('⚠️ Nessun evento su Firebase', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Errore verifica: ${error.message}`);
+            }
+        }
+        
+        window.clearLogs = function() {
+            logContainer.innerHTML = '';
+        }
+        
+        // Inizializzazione automatica
+        window.addEventListener('DOMContentLoaded', async () => {
+            log('🚀 Pagina di sincronizzazione caricata');
+            
+            try {
+                // Test connessione Firebase
+                const isConnected = await testFirebaseConnection();
+                
+                if (isConnected) {
+                    updateStatus('✅ Sistema pronto per la sincronizzazione', 'success');
+                    log('✅ Firebase connesso correttamente');
+                    
+                    // Avvia automaticamente la verifica
+                    await checkEvents();
+                } else {
+                    updateStatus('⚠️ Connessione Firebase non disponibile', 'error');
+                    log('⚠️ Firebase non raggiungibile, verifica la configurazione');
+                }
+            } catch (error) {
+                updateStatus('❌ Errore inizializzazione sistema', 'error');
+                log(`❌ Errore: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>
