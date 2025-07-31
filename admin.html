@@ -973,15 +973,35 @@
                 return;
             }
             
+            const button = document.getElementById('clear-test-events');
+            const originalText = button.textContent;
+            button.textContent = '⏳ Eliminando...';
+            button.disabled = true;
+            
             try {
+                // Verifica che il database manager sia disponibile
                 if (!window.dbManager) {
-                    alert('Database manager non disponibile!');
+                    throw new Error('Database manager non disponibile. Assicurati che Firebase sia connesso.');
+                }
+                
+                // Test connessione Firebase
+                console.log('🔍 Verifico connessione Firebase...');
+                const testResult = await window.dbManager.testConnection();
+                if (!testResult) {
+                    throw new Error('Connessione Firebase non disponibile.');
+                }
+                
+                console.log('📋 Carico eventi dal database...');
+                const events = await window.dbManager.loadEvents();
+                
+                if (!events || events.length === 0) {
+                    alert('ℹ️ Nessun evento trovato nel database.');
                     return;
                 }
                 
-                // Carica tutti gli eventi
-                const events = await window.dbManager.loadEvents();
+                console.log(`📊 Trovati ${events.length} eventi totali`);
                 let deletedCount = 0;
+                let errors = [];
                 
                 // Elimina eventi che contengono "test" nel titolo o nell'artista
                 for (const event of events) {
@@ -993,25 +1013,41 @@
                     );
                     
                     if (isTestEvent) {
-                        await window.dbManager.deleteEvent(event.id);
-                        deletedCount++;
-                        console.log(`🗑️ Eliminato evento test: ${event.title}`);
+                        try {
+                            console.log(`🗑️ Eliminando evento: ${event.title} (ID: ${event.id})`);
+                            await window.dbManager.deleteEvent(event.id);
+                            deletedCount++;
+                            console.log(`✅ Eliminato evento test: ${event.title}`);
+                        } catch (deleteError) {
+                            console.error(`❌ Errore eliminazione evento ${event.title}:`, deleteError);
+                            errors.push(`${event.title}: ${deleteError.message}`);
+                        }
                     }
                 }
                 
+                // Mostra risultati
                 if (deletedCount > 0) {
-                    alert(`✅ Eliminati ${deletedCount} eventi di test!`);
+                    let message = `✅ Eliminati ${deletedCount} eventi di test!`;
+                    if (errors.length > 0) {
+                        message += `\n\n⚠️ Errori durante l'eliminazione di ${errors.length} eventi:\n${errors.join('\n')}`;
+                    }
+                    alert(message);
+                    
                     // Ricarica la lista eventi
-                    if (window.adminManager) {
-                        window.adminManager.renderEventsList();
+                    if (window.adminManager && window.adminManager.renderEventsList) {
+                        setTimeout(() => window.adminManager.renderEventsList(), 1000);
                     }
                 } else {
                     alert('ℹ️ Nessun evento di test trovato.');
                 }
                 
             } catch (error) {
-                console.error('Errore eliminazione eventi test:', error);
-                alert('❌ Errore durante l\'eliminazione degli eventi di test.');
+                console.error('❌ Errore eliminazione eventi test:', error);
+                alert(`❌ Errore durante l'eliminazione degli eventi di test:\n\n${error.message}\n\nControlla la console per maggiori dettagli.`);
+            } finally {
+                // Ripristina il pulsante
+                button.textContent = originalText;
+                button.disabled = false;
             }
         }
         
