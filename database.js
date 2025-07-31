@@ -14,12 +14,26 @@ import {
     onSnapshot 
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-// Funzione per ottenere il database Firebase
+// Funzione per ottenere il database Firebase con retry
 function getFirebaseDb() {
     if (window.firebaseDb) {
         return window.firebaseDb;
     }
-    throw new Error('Firebase non inizializzato');
+    throw new Error('Firebase non inizializzato. Assicurati che Firebase sia caricato correttamente.');
+}
+
+// Utility per retry automatico
+async function retryOperation(operation, maxRetries = 3, delay = 1000) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await operation();
+        } catch (error) {
+            if (i === maxRetries - 1) throw error;
+            console.warn(`⚠️ Tentativo ${i + 1} fallito, riprovo in ${delay}ms:`, error.message);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
+        }
+    }
 }
 
 class DatabaseManager {
@@ -31,23 +45,25 @@ class DatabaseManager {
     // Carica tutti gli eventi dal database (solo approvati)
     async loadEvents() {
         try {
-            const db = getFirebaseDb();
-            const q = query(collection(db, this.eventsCollection));
-            const querySnapshot = await getDocs(q);
-            const events = [];
-            
-            querySnapshot.forEach((doc) => {
-                const eventData = { id: doc.id, ...doc.data() };
-                // Mostra solo eventi approvati o senza stato (compatibilità)
-                if (!eventData.status || eventData.status === 'approved') {
-                    events.push(eventData);
-                }
+            return await retryOperation(async () => {
+                const db = getFirebaseDb();
+                const q = query(collection(db, this.eventsCollection), orderBy('date', 'asc'));
+                const querySnapshot = await getDocs(q);
+                const events = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const eventData = { id: doc.id, ...doc.data() };
+                    // Mostra solo eventi approvati o senza stato (compatibilità)
+                    if (!eventData.status || eventData.status === 'approved') {
+                        events.push(eventData);
+                    }
+                });
+                
+                console.log(`✅ Caricati ${events.length} eventi approvati da Firebase`);
+                return events;
             });
-            
-            console.log(`✅ Caricati ${events.length} eventi approvati da Firebase`);
-            return events;
         } catch (error) {
-            console.warn('⚠️ Errore nel caricamento eventi da Firebase:', error);
+            console.error('❌ Errore critico nel caricamento eventi da Firebase:', error);
             // Fallback al localStorage se Firebase non è disponibile
             return this.loadEventsFromLocalStorage();
         }

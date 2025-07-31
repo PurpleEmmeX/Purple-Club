@@ -25,7 +25,17 @@ class CyberpunkParticles {
     }
 
     createParticles() {
-        const particleCount = Math.floor((window.innerWidth * window.innerHeight) / 15000);
+        // Ottimizzazione: riduce il numero di particelle su dispositivi mobili
+        const isMobile = window.innerWidth < 768;
+        const baseCount = isMobile ? 30000 : 15000;
+        const maxParticles = isMobile ? 50 : 100;
+        
+        const particleCount = Math.min(
+            Math.floor((window.innerWidth * window.innerHeight) / baseCount),
+            maxParticles
+        );
+        
+        this.particles = []; // Reset array
         
         for (let i = 0; i < particleCount; i++) {
             this.particles.push({
@@ -41,6 +51,17 @@ class CyberpunkParticles {
     }
 
     animate() {
+        // Throttling per performance su dispositivi lenti
+        if (!this.lastFrame) this.lastFrame = 0;
+        const now = performance.now();
+        const deltaTime = now - this.lastFrame;
+        
+        if (deltaTime < 16.67) { // ~60fps
+            requestAnimationFrame(() => this.animate());
+            return;
+        }
+        
+        this.lastFrame = now;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.particles.forEach(particle => {

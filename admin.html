@@ -1004,24 +1004,38 @@
                 let errors = [];
                 
                 // Elimina eventi che contengono "test" nel titolo o nell'artista
-                for (const event of events) {
-                    const isTestEvent = (
+                const testEvents = events.filter(event => {
+                    return (
                         (event.title && event.title.toLowerCase().includes('test')) ||
                         (event.artist && event.artist.toLowerCase().includes('test')) ||
                         (event.title && event.title.includes('175397')) ||
-                        (event.title && event.title.includes('SECURITY'))
+                        (event.title && event.title.includes('SECURITY')) ||
+                        (event.artist && event.artist.toLowerCase().includes('security'))
                     );
+                });
+                
+                if (testEvents.length === 0) {
+                    alert('ℹ️ Nessun evento di test trovato.');
+                    return;
+                }
+                
+                console.log(`🎯 Trovati ${testEvents.length} eventi di test da eliminare`);
+                
+                for (let i = 0; i < testEvents.length; i++) {
+                    const event = testEvents[i];
+                    button.textContent = `⏳ Eliminando ${i + 1}/${testEvents.length}...`;
                     
-                    if (isTestEvent) {
-                        try {
-                            console.log(`🗑️ Eliminando evento: ${event.title} (ID: ${event.id})`);
-                            await window.dbManager.deleteEvent(event.id);
-                            deletedCount++;
-                            console.log(`✅ Eliminato evento test: ${event.title}`);
-                        } catch (deleteError) {
-                            console.error(`❌ Errore eliminazione evento ${event.title}:`, deleteError);
-                            errors.push(`${event.title}: ${deleteError.message}`);
-                        }
+                    try {
+                        console.log(`🗑️ Eliminando evento: ${event.title} (ID: ${event.id})`);
+                        await window.dbManager.deleteEvent(event.id);
+                        deletedCount++;
+                        console.log(`✅ Eliminato evento test: ${event.title}`);
+                        
+                        // Piccola pausa per evitare sovraccarico
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (deleteError) {
+                        console.error(`❌ Errore eliminazione evento ${event.title}:`, deleteError);
+                        errors.push(`${event.title}: ${deleteError.message}`);
                     }
                 }
                 

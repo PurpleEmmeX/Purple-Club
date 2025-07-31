@@ -1,0 +1,39 @@
+{
+  "name": "Purple Club - Il Club dei Lucani",
+  "short_name": "Purple Club",
+  "description": "Purple Club - Il Club dei Lucani. Eventi, musica e divertimento.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#8b45ff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "it",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "32x32",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "music", "social"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Eventi",
+      "short_name": "Eventi",
+      "description": "Visualizza tutti gli eventi",
+      "url": "/#eventi",
+      "icons": [
+        {
+          "src": "favicon.ico",
+          "sizes": "32x32",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false
+}

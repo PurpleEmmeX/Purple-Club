@@ -1,0 +1,24 @@
+# Purple Club - Robots.txt
+
+User-agent: *
+Allow: /
+
+# Blocca l'accesso a file sensibili
+Disallow: /admin.html
+Disallow: /admin-profiles.html
+Disallow: /login.html
+Disallow: /test-*.html
+Disallow: /debug-*.html
+Disallow: /setup-*.html
+Disallow: /check-*.html
+Disallow: /sync-*.html
+Disallow: /clear_*.html
+Disallow: /*.js$
+Disallow: /*.css$
+Disallow: /*.log$
+
+# Sitemap (se disponibile)
+# Sitemap: https://purpleclub.example.com/sitemap.xml
+
+# Crawl-delay per evitare sovraccarico
+Crawl-delay: 1
