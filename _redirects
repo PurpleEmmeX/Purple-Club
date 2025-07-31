@@ -1,0 +1,23 @@
+# Netlify redirects for Purple Club
+
+# Redirect root to index.html
+/  /index.html  200
+
+# Handle SPA routing
+/*  /index.html  200
+
+# Admin routes
+/admin  /admin.html  200
+/login  /login.html  200
+/sync-manager  /sync-manager.html  200
+/sync-events  /sync-events.html  200
+
+# API fallbacks (if needed)
+/api/*  /404.html  404
+
+# Security headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
